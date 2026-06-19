@@ -23,4 +23,5 @@ Evolve local / global AGENTS.md by spawning subagents periodically to learn from
 
 - **[2026-06-20]** Avoid Chikou exits on low-volatility consolidations by using a dynamic cloud immunity gate (`Close >= cloud_max` and `IMO >= -0.25`) paired with a crash gate (`30-day ROC >= -0.20` to prevent holding through bear markets). This resolves the 2020 whipsaw exits while increasing returns to 86,714.48% and reducing trades to 13. (Evidence: `strategy.py`, `features.py` changes)
 - **[2026-06-20]** ATR normalization of indicators makes them hyper-sensitive to echo effects during low-volatility sideways ranges. Always pair ATR-normalized indicators with absolute price momentum (ROC) gates to filter low-volatility noise. (Evidence: Chikou echo analysis on July/September 2020)
+- **[2026-06-20]** In backtest simulations with shifted/lagged indicators (like shifted Senkou Spans), do not skip NaN rows globally at the top of the loop as it delays history and distorts returns. Handle NaNs locally or dynamically per field. (Evidence: NaN-skipping mismatch in `tmp/test_er_exit_gate.py:36` vs production `strategy.py:57` fix)
 

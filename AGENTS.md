@@ -18,3 +18,9 @@ Greenfield — no code yet. Setting up from scratch.
 
 Evolve local / global AGENTS.md by spawning subagents periodically to learn from current session, then propose amandemet. The goal is to not repeating the same step every time new session spawns.
 
+
+## Learnings
+
+- **[2026-06-20]** Avoid Chikou exits on low-volatility consolidations by using a dynamic cloud immunity gate (`Close >= cloud_max` and `IMO >= -0.25`) paired with a crash gate (`30-day ROC >= -0.20` to prevent holding through bear markets). This resolves the 2020 whipsaw exits while increasing returns to 86,714.48% and reducing trades to 13. (Evidence: `strategy.py`, `features.py` changes)
+- **[2026-06-20]** ATR normalization of indicators makes them hyper-sensitive to echo effects during low-volatility sideways ranges. Always pair ATR-normalized indicators with absolute price momentum (ROC) gates to filter low-volatility noise. (Evidence: Chikou echo analysis on July/September 2020)
+

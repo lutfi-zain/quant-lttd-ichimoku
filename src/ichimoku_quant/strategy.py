@@ -32,8 +32,8 @@ def generate_signals(df: pd.DataFrame) -> pd.DataFrame:
     Result: Binary Pos (0.0 = flat, 1.0 = positioned).
     Target profile: High return (~69,000%) with ~27-31 trades and very low exit lag.
     """
-    if 'IMO' not in df.columns or 'ER' not in df.columns or 'IMO_Std' not in df.columns or 'Entropy' not in df.columns:
-        raise ValueError("Required columns (IMO, ER, IMO_Std, Entropy) not found.")
+    if 'IMO' not in df.columns or 'ER' not in df.columns or 'IMO_Std' not in df.columns or 'Entropy' not in df.columns or 'senkou_span_a' not in df.columns or 'senkou_span_b' not in df.columns:
+        raise ValueError("Required columns (IMO, ER, IMO_Std, Entropy, senkou_span_a, senkou_span_b) not found.")
 
     df = df.copy()
 
@@ -50,6 +50,9 @@ def generate_signals(df: pd.DataFrame) -> pd.DataFrame:
         std = row['IMO_Std']
         chikou = row.get('S_Chikou', 0.0)
         entropy = row.get('Entropy', 0.0)
+        close = row['Close']
+        cloud_a = row['senkou_span_a']
+        cloud_b = row['senkou_span_b']
 
         if pd.isna(imo) or pd.isna(er) or pd.isna(std) or pd.isna(entropy):
             signals.append(pos)
@@ -66,8 +69,14 @@ def generate_signals(df: pd.DataFrame) -> pd.DataFrame:
         can_exit = hold_days >= MIN_HOLD_DAYS
 
         if pos == 0.0:
-            # ENTRY: requires IMO above adaptive threshold AND sufficient ER AND low entropy (predictable state)
-            if imo > threshold and er > ER_ENTRY and entropy < ENTROPY_THRESH:
+            # ENTRY: requires IMO above adaptive threshold AND sufficient ER AND low entropy
+            # AND price must be above the bottom of the Ichimoku Cloud (Cloud Gate trend filter)
+            cloud_min = np.minimum(cloud_a, cloud_b) if (not pd.isna(cloud_a) and not pd.isna(cloud_b)) else (cloud_a if not pd.isna(cloud_a) else (cloud_b if not pd.isna(cloud_b) else np.nan))
+            gate_pass = True
+            if not pd.isna(cloud_min):
+                gate_pass = (close >= cloud_min)
+
+            if imo > threshold and er > ER_ENTRY and entropy < ENTROPY_THRESH and gate_pass:
                 if intent != 1.0:
                     intent = 1.0
                     confirm_count = 1

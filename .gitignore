@@ -1,0 +1,17 @@
+# Python virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Cache directories
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Poetry lock
+poetry.lock
+
+# Plotly / local files
+tmp/

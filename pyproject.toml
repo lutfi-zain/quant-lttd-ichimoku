@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "ichimoku"
+version = "0.1.0"
+description = "Ichimoku quantification project to measure indicator performance as a trend-following system for Bitcoin"
+authors = ["Tuanku CZ <lutfi.zain@siloamhospitals.com>"]
+readme = "README.md"
+packages = [{include = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pandas = "^2.0"
+numpy = "^1.24"
+scipy = "^1.10"
+matplotlib = "^3.7"
+plotly = "^5.14"
+mplfinance = "^0.12.9b0"
+yfinance = "^0.2.18"
+requests = "^2.30"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.3"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

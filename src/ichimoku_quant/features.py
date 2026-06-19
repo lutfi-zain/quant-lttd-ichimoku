@@ -97,5 +97,8 @@ def generate_ichimoku_features(df: pd.DataFrame, p1=20, p2=60, p3=120, er_len=14
     # Shannon Entropy (Entropy family — randomness filter)
     df['Entropy'] = shannon_entropy(df['Close'], window=entropy_window, bins=entropy_bins)
 
+    # Price ROC for exit crash gate (30 days lookback)
+    df['roc_gate'] = df['Close'].pct_change(periods=30).fillna(0)
+
     df['fwd_ret_1d'] = np.log(df['Close'].shift(-1) / df['Close'])
     return df

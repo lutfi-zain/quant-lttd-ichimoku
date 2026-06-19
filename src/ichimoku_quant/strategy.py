@@ -17,6 +17,11 @@ IMMUNITY_THRESH = 0.50  # Ignore S_Chikou drops if IMO > 0.50 (Extreme Bull Mark
 # Entropy Noise Gate (Entropy & Information Family)
 ENTROPY_THRESH = 2.271  # Block entry signals if rolling 15d return entropy > this (6 bins)
 
+# Cloud-based dynamic exit parameters
+IMO_MIN_LIMIT = -0.25      # Maintain exit immunity above cloud if IMO >= this
+IMO_EXIT_BULL = -0.30      # Lower macro exit threshold above cloud
+ROC_GATE_LIMIT = -0.20     # Disable immunity if 30d ROC is below this (crash gate)
+
 def generate_signals(df: pd.DataFrame) -> pd.DataFrame:
     """
     Clean binary denoised signal generator.
@@ -92,12 +97,29 @@ def generate_signals(df: pd.DataFrame) -> pd.DataFrame:
                 confirm_count = 0
 
         else:  # pos == 1.0
-            # EXIT: Early exit if momentum drops (S_Chikou) OR macro trend dies (IMO < 0)
+            # EXIT: Early exit if momentum drops (S_Chikou) OR macro trend dies
             exit_signal = False
             if can_exit:
-                if chikou < CHIKOU_THRESH and imo < IMMUNITY_THRESH:
+                cloud_max = np.maximum(cloud_a, cloud_b) if (not pd.isna(cloud_a) and not pd.isna(cloud_b)) else np.nan
+                is_above_cloud = (not pd.isna(cloud_max) and close >= cloud_max)
+                
+                # Check crash gate
+                roc_gate = row.get('roc_gate', 0.0)
+                is_not_crashing = (roc_gate >= ROC_GATE_LIMIT)
+                
+                # Dynamic immunity
+                is_immune = (imo >= IMMUNITY_THRESH)
+                if is_above_cloud and is_not_crashing:
+                    is_immune = is_immune or (imo >= IMO_MIN_LIMIT)
+                
+                # Dynamic macro exit threshold
+                current_macro_exit_th = 0.0
+                if is_above_cloud and is_not_crashing:
+                    current_macro_exit_th = IMO_EXIT_BULL
+                
+                if chikou < CHIKOU_THRESH and not is_immune:
                     exit_signal = True
-                elif imo < 0:
+                elif imo < current_macro_exit_th:
                     exit_signal = True
             
             if exit_signal:

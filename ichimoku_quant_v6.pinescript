@@ -19,14 +19,35 @@ int entropy_bins = input.int(6, title="Entropy Bins")
 float CHIKOU_THRESH = input.float(-0.30, title="Chikou Exit Threshold")
 float IMMUNITY_THRESH = input.float(0.50, title="IMO Immunity Threshold")
 float ENTROPY_THRESH = input.float(2.271, title="Entropy Entry Threshold")
-float IMO_MIN_LIMIT = input.float(-0.25, title="IMO Min Limit (Above Cloud)")
+float IMO_MIN_LIMIT = input.float(-0.30, title="IMO Min Limit (Above Cloud)")
 float IMO_EXIT_BULL = input.float(-0.30, title="IMO Exit Bull (Above Cloud)")
 float ROC_GATE_LIMIT = input.float(-0.20, title="ROC Crash Gate Limit")
 
 // ==========================================
 // === HELPER FUNCTIONS ===
 // ==========================================
-// Ehler's SuperSmoother Filter (Spectral Denoising)
+// Safe Min/Max functions to prevent NaN propagation (matching Python np.nanmin/np.nanmax behavior)
+f_safe_min(float x, float y) =>
+    if na(x) and na(y)
+        na
+    else if na(x)
+        y
+    else if na(y)
+        x
+    else
+        math.min(x, y)
+
+f_safe_max(float x, float y) =>
+    if na(x) and na(y)
+        na
+    else if na(x)
+        y
+    else if na(y)
+        x
+    else
+        math.max(x, y)
+
+// Ehler's SuperSmoother Filter (Spectral Denoising) - Robust State Version
 f_supersmoother(float src, int len) =>
     float a1 = math.exp(-1.414 * math.pi / len)
     float b1 = 2.0 * a1 * math.cos(1.414 * math.pi / len)
@@ -34,9 +55,15 @@ f_supersmoother(float src, int len) =>
     float c3 = -a1 * a1
     float c1 = 1.0 - c2 - c3
     
-    var float filt = na
-    filt := na(filt[1]) ? src : c1 * (src + nz(src[1], src)) / 2.0 + c2 * nz(filt[1]) + c3 * nz(filt[2])
-    filt
+    var float filt_0 = na
+    var float filt_1 = na
+    var float filt_2 = na
+    
+    filt_0 := na(filt_1) ? src : c1 * (src + nz(src[1], src)) / 2.0 + c2 * filt_1 + c3 * nz(filt_2)
+    
+    filt_2 := filt_1
+    filt_1 := filt_0
+    filt_0
 
 // Hyperbolic Tangent (tanh) Approximation to prevent math.tanh missing compile error
 f_tanh(float x) =>
@@ -48,18 +75,17 @@ f_tanh(float x) =>
         float e = math.exp(2.0 * x)
         (e - 1.0) / (e + 1.0)
 
-// Shannon Entropy (Rolling Returns Randomness Filter)
-f_shannon_entropy(float src, int window, int bins) =>
-    float ret = nz(ta.change(src) / src[1], 0.0)
-    float min_ret = ta.lowest(ret, window)
-    float max_ret = ta.highest(ret, window)
+// Shannon Entropy (Complexity Filter) - Robust Version
+f_shannon_entropy(float ret_series, int window, int bins) =>
+    float min_ret = ta.lowest(ret_series, window)
+    float max_ret = ta.highest(ret_series, window)
     float bin_width = (max_ret - min_ret) / bins
     
     var int[] counts = array.new<int>(bins, 0)
     array.fill(counts, 0)
     
     for i = 0 to window - 1
-        float val = ret[i]
+        float val = ret_series[i]
         if bin_width > 0.0
             int bin_idx = math.min(bins - 1, math.floor((val - min_ret) / bin_width))
             array.set(counts, bin_idx, array.get(counts, bin_idx) + 1)
@@ -96,8 +122,8 @@ float senkou_span_b = senkou_span_b_raw[p2]
 float S_TK = f_tanh((tenkan_sen - kijun_sen) / atr)
 
 // Component 2: Close relative to Cloud (Normalized)
-float cloud_max = math.max(senkou_span_a, senkou_span_b)
-float cloud_min = math.min(senkou_span_a, senkou_span_b)
+float cloud_max = f_safe_max(senkou_span_a, senkou_span_b)
+float cloud_min = f_safe_min(senkou_span_a, senkou_span_b)
 float dist_cloud = 0.0
 if close > cloud_max
     dist_cloud := (close - cloud_max) / atr
@@ -124,7 +150,8 @@ float net_change   = math.abs(close - nz(close[er_len], close))
 float ER = rolling_vol > 0.0 ? net_change / rolling_vol : 0.0
 
 // Shannon Entropy (Complexity filter)
-float Entropy = f_shannon_entropy(close, entropy_window, entropy_bins)
+float btc_ret = nz(ta.change(close) / close[1], 0.0)
+float Entropy = f_shannon_entropy(btc_ret, entropy_window, entropy_bins)
 
 // Crash Gate ROC (30 days price momentum)
 float roc_gate = (close - nz(close[30], close)) / nz(close[30], 1.0)
@@ -149,7 +176,7 @@ bool can_exit = hold_days >= 10
 if pos == 0.0
     // ENTRY CONDITIONS
     bool gate_pass = true
-    float entry_cloud_min = math.min(senkou_span_a, senkou_span_b)
+    float entry_cloud_min = f_safe_min(senkou_span_a, senkou_span_b)
     if not na(entry_cloud_min)
         gate_pass := (close >= entry_cloud_min)
         
@@ -173,7 +200,7 @@ else // pos == 1.0
     // EXIT CONDITIONS
     bool exit_signal = false
     if can_exit
-        float exit_cloud_max = math.max(senkou_span_a, senkou_span_b)
+        float exit_cloud_max = f_safe_max(senkou_span_a, senkou_span_b)
         bool is_above_cloud = not na(exit_cloud_max) and (close >= exit_cloud_max)
         bool is_not_crashing = (roc_gate >= ROC_GATE_LIMIT)
         

@@ -18,7 +18,7 @@ IMMUNITY_THRESH = 0.50  # Ignore S_Chikou drops if IMO > 0.50 (Extreme Bull Mark
 ENTROPY_THRESH = 2.271  # Block entry signals if rolling 15d return entropy > this (6 bins)
 
 # Cloud-based dynamic exit parameters
-IMO_MIN_LIMIT = -0.25      # Maintain exit immunity above cloud if IMO >= this
+IMO_MIN_LIMIT = -0.30      # Maintain exit immunity above cloud if IMO >= this
 IMO_EXIT_BULL = -0.30      # Lower macro exit threshold above cloud
 ROC_GATE_LIMIT = -0.20     # Disable immunity if 30d ROC is below this (crash gate)
 

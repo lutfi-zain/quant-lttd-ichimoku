@@ -1,5 +1,5 @@
 // @version=6
-strategy("Ichimoku Quant Denoised Strategy v6", overlay=true, initial_capital=10000, default_qty_type=strategy.percent_of_equity, default_qty_value=100, commission_type=strategy.commission.percent, commission_value=0.1, process_orders_on_close=true)
+strategy("Ichimoku Quant Denoised Strategy v6", overlay=false, initial_capital=100000, default_qty_type=strategy.percent_of_equity, default_qty_value=99, commission_type=strategy.commission.percent, commission_value=0.1, process_orders_on_close=true, margin_long=100, margin_short=100)
 
 // ==========================================
 // === INPUT PARAMETERS ===
@@ -237,21 +237,31 @@ if pos == 0.0 and nz(pos[1], 0.0) == 1.0
 color bull_color = color.new(color.green, 90)
 color bear_color = color.new(color.red, 90)
 
-p_sa = plot(senkou_span_a_raw, offset=p2, color=color.new(color.green, 50), title="Senkou Span A")
-p_sb = plot(senkou_span_b_raw, offset=p2, color=color.new(color.red, 50), title="Senkou Span B")
+p_sa = plot(senkou_span_a_raw, offset=p2, color=color.new(color.green, 50), title="Senkou Span A", force_overlay=true)
+p_sb = plot(senkou_span_b_raw, offset=p2, color=color.new(color.red, 50), title="Senkou Span B", force_overlay=true)
 fill(p_sa, p_sb, color = senkou_span_a_raw > senkou_span_b_raw ? bull_color : bear_color, title="Kumo Cloud")
 
 // Plot Kijun-sen for reference
-plot(kijun_sen, color=color.blue, linewidth=2, title="Kijun-sen")
+plot(kijun_sen, color=color.blue, linewidth=2, title="Kijun-sen", force_overlay=true)
+
+// Plot Chikou Span (Lagging Line, shifted backward by p2)
+plot(close, offset=-p2, color=color.purple, linewidth=1, title="Chikou Span", force_overlay=true)
 
 // Plot Entry/Exit Shapes
-plotshape(pos == 1.0 and nz(pos[1], 0.0) == 0.0, title="Buy Signal", style=shape.triangleup, location=location.belowbar, color=color.green, size=size.normal)
-plotshape(pos == 0.0 and nz(pos[1], 0.0) == 1.0, title="Sell Signal", style=shape.triangledown, location=location.abovebar, color=color.red, size=size.normal)
+plotshape(pos == 1.0 and nz(pos[1], 0.0) == 0.0, title="Buy Signal", style=shape.triangleup, location=location.belowbar, color=color.green, size=size.normal, force_overlay=true)
+plotshape(pos == 0.0 and nz(pos[1], 0.0) == 1.0, title="Sell Signal", style=shape.triangledown, location=location.abovebar, color=color.red, size=size.normal, force_overlay=true)
+
+// Plot Oscillator Components (in the indicator/oscillator pane, overlay=false)
+plot(IMO, color=color.orange, linewidth=2, title="IMO")
+plot(threshold, color=color.gray, style=plot.style_line, title="Entry Threshold")
+plot(CHIKOU_THRESH, color=color.new(color.red, 50), style=plot.style_line, title="Chikou Exit Threshold")
+plot(IMMUNITY_THRESH, color=color.new(color.green, 50), style=plot.style_line, title="Immunity Threshold")
+hline(0.0, color=color.new(color.gray, 70), linestyle=hline.style_dotted, title="Zero Line")
 
 // ==========================================
 // === TELEMETRY DASHBOARD ===
 // ==========================================
-var table info_table = table.new(position.top_right, 2, 6, bgcolor=color.new(color.black, 20), border_color=color.gray, border_width=1)
+var table info_table = table.new(position.top_right, 2, 6, bgcolor=color.new(color.black, 20), border_color=color.gray, border_width=1, force_overlay=true)
 if barstate.islastconfirmedhistory
     table.cell(info_table, 0, 0, "Indicator", text_color=color.white, bgcolor=color.new(color.blue, 50))
     table.cell(info_table, 1, 0, "Value", text_color=color.white, bgcolor=color.new(color.blue, 50))

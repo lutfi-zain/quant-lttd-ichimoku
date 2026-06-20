@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Chart from 'react-apexcharts';
+import { createChart, LineStyle, CandlestickSeries, LineSeries, createSeriesMarkers } from 'lightweight-charts';
 import { 
   TrendingUp, 
   Settings, 
@@ -49,8 +50,12 @@ function App() {
   const [trades, setTrades] = useState([]);
   const [timeseries, setTimeseries] = useState([]);
 
-  // TradingView Iframe Widget ref
-  const tvContainerRef = useRef(null);
+  // TradingView Lightweight Charts DOM refs
+  const priceChartRef = useRef(null);
+  const oscChartRef = useRef(null);
+  
+  // Chart instances references
+  const chartsRef = useRef({ priceChart: null, oscChart: null });
 
   // Load status and run initial backtest
   useEffect(() => {
@@ -58,31 +63,225 @@ function App() {
     runBacktest();
   }, []);
 
-  // Build TradingView Embed Widget
+  // Build TradingView Lightweight Charts
   useEffect(() => {
-    if (tvContainerRef.current) {
-      tvContainerRef.current.innerHTML = '';
-      const script = document.createElement('script');
-      script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-      script.type = 'text/javascript';
-      script.async = true;
-      script.innerHTML = JSON.stringify({
-        "autosize": true,
-        "symbol": "INDEX:BTCUSD",
-        "interval": "D",
-        "timezone": "Etc/UTC",
-        "theme": "dark",
-        "style": "1",
-        "locale": "en",
-        "enable_publishing": false,
-        "hide_side_toolbar": false,
-        "allow_symbol_change": true,
-        "calendar": false,
-        "support_host": "https://www.tradingview.com"
-      });
-      tvContainerRef.current.appendChild(script);
+    if (timeseries.length === 0 || !priceChartRef.current || !oscChartRef.current) return;
+
+    // 1. Clean containers
+    priceChartRef.current.innerHTML = '';
+    oscChartRef.current.innerHTML = '';
+
+    const width = priceChartRef.current.clientWidth;
+
+    // Common chart options
+    const chartOptions = {
+      width: width,
+      layout: {
+        background: { type: 'solid', color: '#11131a' },
+        textColor: '#94a1b2',
+        fontSize: 12,
+        fontFamily: 'Outfit, sans-serif'
+      },
+      grid: {
+        vertLines: { color: '#1e2230', style: 2 },
+        horzLines: { color: '#1e2230', style: 2 }
+      },
+      rightPriceScale: {
+        borderColor: '#1e2230',
+        textColor: '#94a1b2'
+      },
+      timeScale: {
+        borderColor: '#1e2230',
+        textColor: '#94a1b2'
+      },
+      crosshair: {
+        vertLine: { color: '#3f4765', width: 1, style: 1 },
+        horzLine: { color: '#3f4765', width: 1, style: 1 }
+      }
+    };
+
+    // 2. Create Price Chart (Upper Pane)
+    const priceChart = createChart(priceChartRef.current, {
+      ...chartOptions,
+      height: 380,
+      timeScale: {
+        ...chartOptions.timeScale,
+        visible: false // Hide time axis on price chart to save vertical space
+      }
+    });
+
+    // 3. Create Oscillator Chart (Lower Pane)
+    const oscChart = createChart(oscChartRef.current, {
+      ...chartOptions,
+      height: 220
+    });
+
+    chartsRef.current = { priceChart, oscChart };
+
+    // --- POPULATE PRICE CHART ---
+    // Candlestick Series in v5
+    const candleSeries = priceChart.addSeries(CandlestickSeries, {
+      upColor: '#10b981',
+      downColor: '#ef4444',
+      borderVisible: false,
+      wickUpColor: '#10b981',
+      wickDownColor: '#ef4444'
+    });
+
+    const candleData = timeseries.map(d => ({
+      time: d.Date,
+      open: d.Open !== null ? d.Open : d.Close,
+      high: d.High !== null ? d.High : d.Close,
+      low: d.Low !== null ? d.Low : d.Close,
+      close: d.Close
+    })).filter(d => d.open !== null);
+
+    candleSeries.setData(candleData);
+
+    // Ichimoku Lines in v5
+    const tenkanSeries = priceChart.addSeries(LineSeries, { color: '#ef4444', lineWidth: 1.5, title: 'Tenkan-sen' });
+    const kijunSeries = priceChart.addSeries(LineSeries, { color: '#2563eb', lineWidth: 2, title: 'Kijun-sen' });
+    const spanASeries = priceChart.addSeries(LineSeries, { color: 'rgba(16, 185, 129, 0.4)', lineWidth: 1, title: 'Span A' });
+    const spanBSeries = priceChart.addSeries(LineSeries, { color: 'rgba(239, 68, 68, 0.4)', lineWidth: 1, title: 'Span B' });
+
+    tenkanSeries.setData(timeseries.map(d => ({ time: d.Date, value: d.tenkan_sen })).filter(d => d.value !== null));
+    kijunSeries.setData(timeseries.map(d => ({ time: d.Date, value: d.kijun_sen })).filter(d => d.value !== null));
+    spanASeries.setData(timeseries.map(d => ({ time: d.Date, value: d.senkou_span_a })).filter(d => d.value !== null));
+    spanBSeries.setData(timeseries.map(d => ({ time: d.Date, value: d.senkou_span_b })).filter(d => d.value !== null));
+
+    // Buy/Sell Markers on Candlestick
+    const markers = [];
+    for (let i = 1; i < timeseries.length; i++) {
+      const prev = timeseries[i - 1].Active_Pos;
+      const curr = timeseries[i].Active_Pos;
+      if (prev === 0 && curr === 1) {
+        markers.push({
+          time: timeseries[i].Date,
+          position: 'belowBar',
+          color: '#10b981',
+          shape: 'arrowUp',
+          text: 'BUY'
+        });
+      } else if (prev === 1 && curr === 0) {
+        markers.push({
+          time: timeseries[i].Date,
+          position: 'aboveBar',
+          color: '#ef4444',
+          shape: 'arrowDown',
+          text: 'SELL'
+        });
+      }
     }
-  }, [backendStatus]);
+    createSeriesMarkers(candleSeries, markers);
+
+    // --- POPULATE OSCILLATOR CHART ---
+    // Composite IMO Series in v5
+    const imoSeries = oscChart.addSeries(LineSeries, {
+      color: '#ff8800',
+      lineWidth: 2,
+      title: 'IMO'
+    });
+    imoSeries.setData(timeseries.map(d => ({ time: d.Date, value: d.IMO })).filter(d => d.value !== null));
+
+    // Entry Threshold Series in v5
+    const threshSeries = oscChart.addSeries(LineSeries, {
+      color: '#626f84',
+      lineWidth: 1.2,
+      lineStyle: LineStyle.Dashed,
+      title: 'Entry Threshold'
+    });
+    threshSeries.setData(timeseries.map(d => ({ time: d.Date, value: d.IMO_Std !== null ? d.IMO_Std * params.t_entry : null })).filter(d => d.value !== null));
+
+    // Shannon Entropy Series in v5
+    const entropySeries = oscChart.addSeries(LineSeries, {
+      color: '#c084fc',
+      lineWidth: 1.5,
+      title: 'Entropy'
+    });
+    entropySeries.setData(timeseries.map(d => ({ time: d.Date, value: d.Entropy })).filter(d => d.value !== null));
+
+    // S_Chikou Momentum Series in v5
+    const chikouSeries = oscChart.addSeries(LineSeries, {
+      color: '#00e5ff',
+      lineWidth: 1.2,
+      title: 'S_Chikou'
+    });
+    chikouSeries.setData(timeseries.map(d => ({ time: d.Date, value: d.S_Chikou })).filter(d => d.value !== null));
+
+    // Add Horizontal Price Lines for thresholds (baseline limits)
+    entropySeries.createPriceLine({
+      price: params.entropy_thresh,
+      color: 'rgba(239, 68, 68, 0.6)',
+      lineWidth: 1,
+      lineStyle: LineStyle.Dotted,
+      axisLabelVisible: true,
+      title: 'Entropy Limit'
+    });
+
+    chikouSeries.createPriceLine({
+      price: params.chikou_thresh,
+      color: 'rgba(255, 51, 102, 0.6)',
+      lineWidth: 1,
+      lineStyle: LineStyle.Dotted,
+      axisLabelVisible: true,
+      title: 'Chikou Exit'
+    });
+
+    // --- SINKRONISASI VISIBLE LOGICAL RANGE (ZOOM / SCROLL) ---
+    let isSyncing = false;
+    
+    priceChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+      if (isSyncing) return;
+      isSyncing = true;
+      oscChart.timeScale().setVisibleLogicalRange(range);
+      isSyncing = false;
+    });
+
+    oscChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+      if (isSyncing) return;
+      isSyncing = true;
+      priceChart.timeScale().setVisibleLogicalRange(range);
+      isSyncing = false;
+    });
+
+    // --- SINKRONISASI CROSSHAIR MOVE ---
+    priceChart.subscribeCrosshairMove(param => {
+      if (isSyncing) return;
+      isSyncing = true;
+      if (param.time) {
+        oscChart.setCrosshairPosition(param.time);
+      }
+      isSyncing = false;
+    });
+
+    oscChart.subscribeCrosshairMove(param => {
+      if (isSyncing) return;
+      isSyncing = true;
+      if (param.time) {
+        priceChart.setCrosshairPosition(param.time);
+      }
+      isSyncing = false;
+    });
+
+    // Fit content initially
+    priceChart.timeScale().fitContent();
+
+    // Resize observer to make charts fully responsive
+    const resizeObserver = new ResizeObserver(entries => {
+      if (entries.length === 0) return;
+      const { width: newWidth } = entries[0].contentRect;
+      priceChart.resize(newWidth, 380);
+      oscChart.resize(newWidth, 220);
+    });
+
+    resizeObserver.observe(priceChartRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+      priceChart.remove();
+      oscChart.remove();
+    };
+  }, [timeseries, params.entropy_thresh, params.chikou_thresh, params.t_entry]);
 
   const fetchStatus = async () => {
     try {
@@ -129,10 +328,8 @@ function App() {
     }));
   };
 
-  // Prepare Chart Data
+  // Prepare ApexCharts Equity data
   const categories = timeseries.map(d => d.Date);
-
-  // Chart 1: Equity Curve Options
   const equitySeries = [
     {
       name: 'Strategy (Net)',
@@ -170,70 +367,6 @@ function App() {
     },
     grid: { borderColor: '#1e2230', strokeDashArray: 4 },
     tooltip: { x: { format: 'dd MMM yyyy' } },
-    legend: { labels: { colors: '#f1f2f6' } }
-  };
-
-  // Chart 2: Shannon Entropy & Indicators Options (The main request visual!)
-  const indicatorSeries = [
-    {
-      name: 'IMO (Oscillator)',
-      data: timeseries.map(d => d.IMO !== null ? parseFloat(d.IMO.toFixed(4)) : null)
-    },
-    {
-      name: 'Entry Threshold',
-      data: timeseries.map(d => d.IMO_Std !== null ? parseFloat((d.IMO_Std * params.t_entry).toFixed(4)) : null)
-    },
-    {
-      name: 'Shannon Entropy',
-      data: timeseries.map(d => d.Entropy !== null ? parseFloat(d.Entropy.toFixed(4)) : null)
-    },
-    {
-      name: 'S_Chikou Momentum',
-      data: timeseries.map(d => d.S_Chikou !== null ? parseFloat(d.S_Chikou.toFixed(4)) : null)
-    }
-  ];
-
-  const indicatorChartOptions = {
-    chart: {
-      id: 'indicators',
-      animations: { enabled: false },
-      background: 'transparent'
-    },
-    theme: { mode: 'dark' },
-    colors: ['#ff8800', '#626f84', '#c084fc', '#00e5ff'],
-    stroke: { curve: 'straight', width: 1.5 },
-    xaxis: {
-      type: 'datetime',
-      categories: categories,
-      labels: { style: { colors: '#94a1b2' } }
-    },
-    yaxis: {
-      title: { text: 'Indicator Value', style: { color: '#94a1b2' } },
-      labels: { style: { colors: '#94a1b2' } }
-    },
-    grid: { borderColor: '#1e2230', strokeDashArray: 4 },
-    annotations: {
-      yaxis: [
-        {
-          y: params.entropy_thresh,
-          borderColor: '#ef4444',
-          strokeDashArray: 3,
-          label: {
-            text: `Entropy Limit (${params.entropy_thresh})`,
-            style: { color: '#fff', background: '#ef4444' }
-          }
-        },
-        {
-          y: params.chikou_thresh,
-          borderColor: '#ff3366',
-          strokeDashArray: 3,
-          label: {
-            text: `Chikou Exit (${params.chikou_thresh})`,
-            style: { color: '#fff', background: '#ff3366' }
-          }
-        }
-      ]
-    },
     legend: { labels: { colors: '#f1f2f6' } }
   };
 
@@ -426,13 +559,53 @@ function App() {
             </div>
           )}
 
-          {/* Interactive ApexCharts */}
+          {/* Synchronized TradingView Lightweight Charts (The main request visual!) */}
+          <div className="chart-container" style={{ padding: '20px' }}>
+            <h3 className="section-title">
+              <Eye size={20} />
+              <span>TradingView Chart Lite (Synchronized Candlesticks & Indicators)</span>
+            </h3>
+            
+            {/* Price Chart Pane */}
+            <div style={{ position: 'relative' }}>
+              <div 
+                ref={priceChartRef} 
+                style={{ width: '100%', height: '380px' }}
+              />
+              <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(17, 19, 26, 0.85)', padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--border-muted)', fontSize: '11px', color: 'var(--color-text-secondary)', display: 'flex', gap: '12px', pointerEvents: 'none', zIndex: 10 }}>
+                <span><strong style={{ color: '#fff' }}>BTCUSD Daily</strong></span>
+                <span><strong style={{ color: '#ef4444' }}>■</strong> Tenkan-sen</span>
+                <span><strong style={{ color: '#2563eb' }}>■</strong> Kijun-sen</span>
+                <span><strong style={{ color: '#10b981' }}>■</strong> Span A</span>
+                <span><strong style={{ color: '#ef4444' }}>■</strong> Span B</span>
+              </div>
+            </div>
+
+            {/* Gap/Border separator */}
+            <div style={{ height: '1px', background: 'var(--border-muted)', margin: '4px 0' }} />
+
+            {/* Oscillator Chart Pane */}
+            <div style={{ position: 'relative' }}>
+              <div 
+                ref={oscChartRef} 
+                style={{ width: '100%', height: '220px' }}
+              />
+              <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(17, 19, 26, 0.85)', padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--border-muted)', fontSize: '11px', color: 'var(--color-text-secondary)', display: 'flex', gap: '12px', pointerEvents: 'none', zIndex: 10 }}>
+                <span><strong style={{ color: '#ff8800' }}>■</strong> IMO</span>
+                <span><strong style={{ color: '#626f84' }}>■</strong> Threshold</span>
+                <span><strong style={{ color: '#c084fc' }}>■</strong> Shannon Entropy</span>
+                <span><strong style={{ color: '#00e5ff' }}>■</strong> S_Chikou</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Interactive ApexCharts for Equity comparison */}
           {timeseries.length > 0 && (
             <div className="chart-container">
               <div>
                 <h3 className="section-title">
                   <TrendingUp size={20} />
-                  <span>Interactive Equity Curves</span>
+                  <span>Cumulative Equity Curves</span>
                 </h3>
                 <Chart 
                   options={equityChartOptions} 
@@ -441,99 +614,66 @@ function App() {
                   height={320} 
                 />
               </div>
-
-              <div>
-                <h3 className="section-title">
-                  <Activity size={20} />
-                  <span>Denoised Oscillator Subplots (with Shannon Entropy & S_Chikou)</span>
-                </h3>
-                <Chart 
-                  options={indicatorChartOptions} 
-                  series={indicatorSeries} 
-                  type="line" 
-                  height={320} 
-                />
-              </div>
             </div>
           )}
 
-          {/* Interactive Widget Row */}
-          <div className="widgets-section">
-            {/* Historical Trades Log Table */}
-            <div className="bento-card table-card">
-              <h3 className="section-title" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Database size={18} />
-                  <span>Completed Trades Log</span>
-                </div>
-                {trades.length > 0 && (
-                  <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
-                    {trades.length} trades recorded
-                  </span>
-                )}
-              </h3>
+          {/* Historical Trades Log Table */}
+          <div className="bento-card table-card">
+            <h3 className="section-title" style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Database size={18} />
+                <span>Completed Trades Log</span>
+              </div>
+              {trades.length > 0 && (
+                <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
+                  {trades.length} trades recorded
+                </span>
+              )}
+            </h3>
 
-              <div className="table-wrapper">
-                <table className="trades-table">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Entry Date</th>
-                      <th>Entry Price</th>
-                      <th>Exit Date</th>
-                      <th>Exit Price</th>
-                      <th>Return (%)</th>
-                      <th>Hold Days</th>
-                      <th>Exit Reason</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {trades.length > 0 ? (
-                      trades.map(trade => (
-                        <tr key={trade.id}>
-                          <td>#{trade.id}</td>
-                          <td>{trade.entry_date}</td>
-                          <td>${trade.entry_price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                          <td>{trade.exit_date}</td>
-                          <td>${trade.exit_price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                          <td className={trade.return >= 0 ? "profit" : "loss"}>
-                            {trade.return >= 0 ? '+' : ''}{trade.return.toFixed(2)}%
-                          </td>
-                          <td>{trade.holding_days}d</td>
-                          <td>
-                            <span className={`badge-reason ${trade.exit_reason.toLowerCase().includes('chikou') ? 'chikou' : 'macro'}`}>
-                              {trade.exit_reason}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={8} style={{ textAlign: 'center', padding: '24px', color: 'var(--color-text-muted)' }}>
-                          No trades completed within the backtest range.
+            <div className="table-wrapper">
+              <table className="trades-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Entry Date</th>
+                    <th>Entry Price</th>
+                    <th>Exit Date</th>
+                    <th>Exit Price</th>
+                    <th>Return (%)</th>
+                    <th>Hold Days</th>
+                    <th>Exit Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {trades.length > 0 ? (
+                    trades.map(trade => (
+                      <tr key={trade.id}>
+                        <td>#{trade.id}</td>
+                        <td>{trade.entry_date}</td>
+                        <td>${trade.entry_price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        <td>{trade.exit_date}</td>
+                        <td>${trade.exit_price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        <td className={trade.return >= 0 ? "profit" : "loss"}>
+                          {trade.return >= 0 ? '+' : ''}{trade.return.toFixed(2)}%
+                        </td>
+                        <td>{trade.holding_days}d</td>
+                        <td>
+                          <span className={`badge-reason ${trade.exit_reason.toLowerCase().includes('chikou') ? 'chikou' : 'macro'}`}>
+                            {trade.exit_reason}
+                          </span>
                         </td>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Live TradingView Widget */}
-            <div className="tv-widget-card">
-              <h3 className="section-title" style={{ marginBottom: '12px' }}>
-                <Eye size={18} />
-                <span>Live Reference (BTCUSD)</span>
-              </h3>
-              <div 
-                ref={tvContainerRef} 
-                style={{ height: 'calc(100% - 40px)', width: '100%', borderRadius: '12px', overflow: 'hidden' }}
-              >
-                {/* Embed Loading */}
-                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)' }}>
-                  <span>Loading TradingView chart...</span>
-                </div>
-              </div>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={8} style={{ textAlign: 'center', padding: '24px', color: 'var(--color-text-muted)' }}>
+                        No trades completed within the backtest range.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </main>

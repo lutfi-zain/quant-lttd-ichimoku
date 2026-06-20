@@ -15,3 +15,8 @@ poetry.lock
 
 # Plotly / local files
 tmp/
+
+# IDE / Agent caches
+.codex/
+.impeccable/
+

@@ -54,6 +54,7 @@ function App() {
   // UI Expand States
   const [paramsExpanded, setParamsExpanded] = useState(false); // Collapsible parameter tuning sidebar (default hide)
   const [isLogScale, setIsLogScale] = useState(false); // Log/Lin toggle for BTC Chart
+  const [maximizedPane, setMaximizedPane] = useState('none'); // 'none' | 'price' | 'osc' | 'equity'
 
   // Theme State (default: system)
   const [theme, setTheme] = useState(() => {
@@ -114,6 +115,7 @@ function App() {
   const priceChartRef = useRef(null);
   const oscChartRef = useRef(null);
   const equityChartRef = useRef(null);
+  const chartContainerRef = useRef(null);
   const chartsRef = useRef({ priceChart: null, oscChart: null, equityChart: null });
 
   // Load status and run initial backtest
@@ -131,7 +133,16 @@ function App() {
     oscChartRef.current.innerHTML = '';
     equityChartRef.current.innerHTML = '';
 
-    const width = priceChartRef.current.clientWidth;
+    // Set heights dynamically based on maximized state
+    const isPriceMax = maximizedPane === 'price';
+    const isOscMax = maximizedPane === 'osc';
+    const isEquityMax = maximizedPane === 'equity';
+
+    const priceHeight = isPriceMax ? 700 : 350;
+    const oscHeight = isOscMax ? 700 : 200;
+    const equityHeight = isEquityMax ? 700 : 220;
+
+    const width = chartContainerRef.current?.clientWidth || 800;
     const isDark = activeTheme === 'dark';
 
     // Common chart options matching Off-White / Dark Minimalist UI
@@ -165,7 +176,7 @@ function App() {
     // 2. Create Price Chart (Upper Pane)
     const priceChart = createChart(priceChartRef.current, {
       ...chartOptions,
-      height: 350,
+      height: priceHeight,
       timeScale: {
         ...chartOptions.timeScale,
         visible: false // Hide time axis on price chart to save vertical space
@@ -181,7 +192,7 @@ function App() {
     // 3. Create Oscillator Chart (Middle Pane)
     const oscChart = createChart(oscChartRef.current, {
       ...chartOptions,
-      height: 200,
+      height: oscHeight,
       timeScale: {
         ...chartOptions.timeScale,
         visible: false // Hide time axis on oscillator chart to save vertical space
@@ -191,7 +202,7 @@ function App() {
     // 4. Create Cumulative Equity Growth Chart (Lower Pane)
     const equityChart = createChart(equityChartRef.current, {
       ...chartOptions,
-      height: 220,
+      height: equityHeight,
       localization: {
         priceFormatter: price => `${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`
       }
@@ -437,12 +448,14 @@ function App() {
     const resizeObserver = new ResizeObserver(entries => {
       if (entries.length === 0) return;
       const { width: newWidth } = entries[0].contentRect;
-      priceChart.resize(newWidth, 350);
-      oscChart.resize(newWidth, 200);
-      equityChart.resize(newWidth, 220);
+      priceChart.resize(newWidth, priceHeight);
+      oscChart.resize(newWidth, oscHeight);
+      equityChart.resize(newWidth, equityHeight);
     });
 
-    resizeObserver.observe(priceChartRef.current);
+    if (chartContainerRef.current) {
+      resizeObserver.observe(chartContainerRef.current);
+    }
 
     return () => {
       resizeObserver.disconnect();
@@ -450,7 +463,7 @@ function App() {
       oscChart.remove();
       equityChart.remove();
     };
-  }, [timeseries, params.entropy_thresh, params.chikou_thresh, params.t_entry, isLogScale, activeTheme]);
+  }, [timeseries, params.entropy_thresh, params.chikou_thresh, params.t_entry, isLogScale, activeTheme, maximizedPane]);
 
   const fetchStatus = async () => {
     try {
@@ -824,7 +837,7 @@ function App() {
           )}
 
           {/* Multi-Pane Synchronized Charting Suite (Sticked Layout) */}
-          <div className="chart-container" style={{ padding: 0, gap: 0, overflow: 'hidden' }}>
+          <div className="chart-container" ref={chartContainerRef} style={{ padding: 0, gap: 0, overflow: 'hidden' }}>
             <h3 className="section-title" style={{ padding: '16px 24px', borderBottom: '1px solid var(--border-muted)', margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div className="section-title-left">
                 <IconTrending />
@@ -849,7 +862,7 @@ function App() {
             </h3>
 
             {/* 1. Price Chart Pane */}
-            <div style={{ position: 'relative', width: '100%' }}>
+            <div style={{ position: 'relative', width: '100%', display: (maximizedPane === 'none' || maximizedPane === 'price') ? 'block' : 'none' }}>
               {/* Floating Overlay Legend for Price Chart */}
               <div style={{ position: 'absolute', top: '12px', left: '16px', zIndex: 10, pointerEvents: 'none', display: 'flex', flexDirection: 'column', gap: '4px', background: 'var(--bg-surface)', border: '1px solid var(--border-muted)', padding: '6px 12px', borderRadius: '4px', opacity: 0.9 }}>
                 <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--color-text-primary)', fontFamily: 'var(--font-mono)' }}>
@@ -878,17 +891,28 @@ function App() {
                   </span>
                 </div>
               </div>
+              
+              {/* Maximize/Restore Toggle Button */}
+              <button 
+                onClick={() => setMaximizedPane(maximizedPane === 'price' ? 'none' : 'price')}
+                className="toggle-option-btn"
+                style={{ position: 'absolute', top: '12px', right: '16px', zIndex: 10, cursor: 'pointer' }}
+                title={maximizedPane === 'price' ? 'Restore Panels' : 'Maximize Pane'}
+              >
+                {maximizedPane === 'price' ? 'RESTORE' : 'MAXIMIZE'}
+              </button>
+
               <div 
                 ref={priceChartRef} 
-                style={{ width: '100%', height: '350px' }}
+                style={{ width: '100%', height: maximizedPane === 'price' ? '700px' : '350px' }}
               />
             </div>
 
             {/* Gap separator line */}
-            <div style={{ height: '1px', background: 'var(--border-muted)', margin: '0' }} />
+            {maximizedPane === 'none' && <div style={{ height: '1px', background: 'var(--border-muted)', margin: '0' }} />}
 
             {/* 2. Oscillator Chart Pane */}
-            <div style={{ position: 'relative', width: '100%' }}>
+            <div style={{ position: 'relative', width: '100%', display: (maximizedPane === 'none' || maximizedPane === 'osc') ? 'block' : 'none' }}>
               {/* Floating Overlay Legend for Oscillator Chart */}
               <div style={{ position: 'absolute', top: '12px', left: '16px', zIndex: 10, pointerEvents: 'none', display: 'flex', flexDirection: 'column', gap: '4px', background: 'var(--bg-surface)', border: '1px solid var(--border-muted)', padding: '6px 12px', borderRadius: '4px', opacity: 0.9 }}>
                 <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--color-text-primary)', fontFamily: 'var(--font-mono)' }}>
@@ -913,18 +937,29 @@ function App() {
                   </span>
                 </div>
               </div>
+
+              {/* Maximize/Restore Toggle Button */}
+              <button 
+                onClick={() => setMaximizedPane(maximizedPane === 'osc' ? 'none' : 'osc')}
+                className="toggle-option-btn"
+                style={{ position: 'absolute', top: '12px', right: '16px', zIndex: 10, cursor: 'pointer' }}
+                title={maximizedPane === 'osc' ? 'Restore Panels' : 'Maximize Pane'}
+              >
+                {maximizedPane === 'osc' ? 'RESTORE' : 'MAXIMIZE'}
+              </button>
+
               <div 
                 ref={oscChartRef} 
-                style={{ width: '100%', height: '200px' }}
+                style={{ width: '100%', height: maximizedPane === 'osc' ? '700px' : '200px' }}
               />
             </div>
 
             {/* Gap separator line */}
-            <div style={{ height: '1px', background: 'var(--border-muted)', margin: '0' }} />
+            {maximizedPane === 'none' && <div style={{ height: '1px', background: 'var(--border-muted)', margin: '0' }} />}
 
             {/* 3. Cumulative Equity Growth Pane */}
             {timeseries.length > 0 && (
-              <div style={{ position: 'relative', width: '100%' }}>
+              <div style={{ position: 'relative', width: '100%', display: (maximizedPane === 'none' || maximizedPane === 'equity') ? 'block' : 'none' }}>
                 {/* Floating Overlay Legend for Equity Chart */}
                 <div style={{ position: 'absolute', top: '12px', left: '16px', zIndex: 10, pointerEvents: 'none', display: 'flex', flexDirection: 'column', gap: '4px', background: 'var(--bg-surface)', border: '1px solid var(--border-muted)', padding: '6px 12px', borderRadius: '4px', opacity: 0.9 }}>
                   <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--color-text-primary)', fontFamily: 'var(--font-mono)' }}>
@@ -941,9 +976,20 @@ function App() {
                     </span>
                   </div>
                 </div>
+
+                {/* Maximize/Restore Toggle Button */}
+                <button 
+                  onClick={() => setMaximizedPane(maximizedPane === 'equity' ? 'none' : 'equity')}
+                  className="toggle-option-btn"
+                  style={{ position: 'absolute', top: '12px', right: '16px', zIndex: 10, cursor: 'pointer' }}
+                  title={maximizedPane === 'equity' ? 'Restore Panels' : 'Maximize Pane'}
+                >
+                  {maximizedPane === 'equity' ? 'RESTORE' : 'MAXIMIZE'}
+                </button>
+
                 <div 
                   ref={equityChartRef} 
-                  style={{ width: '100%', height: '220px' }}
+                  style={{ width: '100%', height: maximizedPane === 'equity' ? '700px' : '220px' }}
                 />
               </div>
             )}

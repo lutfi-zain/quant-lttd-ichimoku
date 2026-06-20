@@ -48,6 +48,8 @@ class BacktestRequest(BaseModel):
     imo_exit_bull: float = -0.30
     roc_gate_limit: float = -0.20
     transaction_cost: float = 0.001
+    start_date: str = ""
+    end_date: str = ""
 
 def extract_trades(df: pd.DataFrame, chikou_thresh: float, imo_exit_bull: float) -> List[Dict[str, Any]]:
     trades = []
@@ -158,13 +160,53 @@ def api_backtest(req: BacktestRequest):
         )
         
         # 4. Run Backtest
-        df_back = run_backtest(df_sig, transaction_cost=req.transaction_cost)
+        df_back_full = run_backtest(df_sig, transaction_cost=req.transaction_cost)
         
-        # 5. Calculate Metrics
+        # Extract trades on full series to keep complete trade detail
+        all_trades = extract_trades(df_back_full, req.chikou_thresh, req.imo_exit_bull)
+        
+        # Slice the backtest range if parameters are provided
+        df_back = df_back_full.copy()
+        if req.start_date:
+            df_back = df_back[df_back.index >= pd.to_datetime(req.start_date)]
+        if req.end_date:
+            df_back = df_back[df_back.index <= pd.to_datetime(req.end_date)]
+            
+        # Recalculate cumulative returns from the start of the sliced dataset
+        df_back['Cum_Market'] = (1 + df_back['Market_Ret'].fillna(0)).cumprod() - 1
+        df_back['Cum_Strat'] = (1 + df_back['Strat_Net_Ret'].fillna(0)).cumprod() - 1
+        
+        # 5. Calculate Metrics on the sliced series
         metrics = calculate_metrics(df_back)
         
-        # 6. Extract Trades
-        trades = extract_trades(df_back, req.chikou_thresh, req.imo_exit_bull)
+        # Filter trades list to match the date range
+        trades = []
+        trade_id = 1
+        for t in all_trades:
+            entry_dt = pd.to_datetime(t['entry_date'])
+            if req.start_date and entry_dt < pd.to_datetime(req.start_date):
+                continue
+            if req.end_date and entry_dt > pd.to_datetime(req.end_date):
+                continue
+            t['id'] = trade_id
+            trades.append(t)
+            trade_id += 1
+            
+        # Override trade metrics to reflect the filtered trades list
+        if len(trades) > 0:
+            trade_returns = np.array([t['return'] / 100.0 for t in trades])
+            wins = trade_returns[trade_returns > 0]
+            losses = trade_returns[trade_returns <= 0]
+            metrics['Number of Trades'] = len(trades)
+            metrics['Win Rate (%)'] = (len(wins) / len(trades) * 100.0)
+            if len(losses) > 0 and abs(losses.sum()) > 0:
+                metrics['Profit Factor'] = float(wins.sum() / abs(losses.sum()))
+            else:
+                metrics['Profit Factor'] = float(wins.sum()) if len(wins) > 0 else 1.0
+        else:
+            metrics['Number of Trades'] = 0
+            metrics['Win Rate (%)'] = 0.0
+            metrics['Profit Factor'] = 1.0
         
         # 7. Build timeseries response (for interactive charts)
         # Select key columns and replace NaNs with None/null for JSON compatibility

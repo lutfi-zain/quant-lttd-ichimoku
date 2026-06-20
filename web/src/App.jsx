@@ -101,7 +101,9 @@ function App() {
     imo_min_limit: -0.30,
     imo_exit_bull: -0.30,
     roc_gate_limit: -0.20,
-    transaction_cost: 0.001
+    transaction_cost: 0.001,
+    start_date: '2016-01-01',
+    end_date: ''
   });
 
   const [metrics, setMetrics] = useState(null);
@@ -731,6 +733,29 @@ function App() {
                 </div>
               </div>
 
+              {/* Backtest Range */}
+              <div>
+                <span className="param-section-title">
+                  <IconSettings /> Backtest Range
+                </span>
+                <div className="param-group">
+                  <label>Start Date</label>
+                  <input 
+                    type="date" 
+                    value={params.start_date || ''} 
+                    onChange={e => handleInputChange('start_date', e.target.value)} 
+                  />
+                </div>
+                <div className="param-group">
+                  <label>End Date</label>
+                  <input 
+                    type="date" 
+                    value={params.end_date || ''} 
+                    onChange={e => handleInputChange('end_date', e.target.value)} 
+                  />
+                </div>
+              </div>
+
               <button 
                 className="btn-primary" 
                 onClick={runBacktest} 
@@ -799,138 +824,127 @@ function App() {
           )}
 
           {/* Multi-Pane Synchronized Charting Suite (Sticked Layout) */}
-          <div className="chart-container" style={{ display: 'flex', flexDirection: 'column', gap: '0px' }}>
-            {/* 1. BTC/USD Price Action & Ichimoku Clouds */}
-            <div style={{ paddingBottom: '16px' }}>
-              <h3 className="section-title">
-                <div className="section-title-left">
-                  <IconTrending />
-                  <span>BTC/USD Price Action & Ichimoku Clouds</span>
-                </div>
-                
-                {/* Log/Lin Toggle Button */}
-                <div className="toggle-btn-group">
-                  <button 
-                    onClick={() => setIsLogScale(false)} 
-                    className={`toggle-option-btn ${!isLogScale ? 'active' : ''}`}
-                  >
-                    LIN
-                  </button>
-                  <button 
-                    onClick={() => setIsLogScale(true)} 
-                    className={`toggle-option-btn ${isLogScale ? 'active' : ''}`}
-                  >
-                    LOG
-                  </button>
-                </div>
-              </h3>
-
-              {/* Legend indicators overlay */}
-              <div className="chart-legend-box" style={{ marginTop: '8px', marginBottom: '12px' }}>
-                <div className="chart-legend-item">
-                  <span className="legend-color-dot" style={{ backgroundColor: '#9f2f2d' }}></span>
-                  <span>Tenkan-sen</span>
-                </div>
-                <div className="chart-legend-item">
-                  <span className="legend-color-dot" style={{ backgroundColor: '#1f6c9f' }}></span>
-                  <span>Kijun-sen</span>
-                </div>
-                <div className="chart-legend-item">
-                  <span className="legend-color-dot" style={{ backgroundColor: 'rgba(52, 101, 56, 0.45)' }}></span>
-                  <span>Span A</span>
-                </div>
-                <div className="chart-legend-item">
-                  <span className="legend-color-dot" style={{ backgroundColor: 'rgba(159, 47, 45, 0.45)' }}></span>
-                  <span>Span B</span>
-                </div>
-                <div className="chart-legend-item">
-                  <span className="legend-color-dot" style={{ backgroundColor: 'rgba(107, 33, 168, 0.7)' }}></span>
-                  <span>Chikou Span (Lagged)</span>
-                </div>
+          <div className="chart-container" style={{ padding: 0, gap: 0, overflow: 'hidden' }}>
+            <h3 className="section-title" style={{ padding: '16px 24px', borderBottom: '1px solid var(--border-muted)', margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="section-title-left">
+                <IconTrending />
+                <span>Multi-Pane Strategy Analytics</span>
               </div>
               
-              {/* Price Chart Pane */}
-              <div style={{ position: 'relative' }}>
-                <div 
-                  ref={priceChartRef} 
-                  style={{ width: '100%', height: '350px' }}
-                />
+              {/* Log/Lin Toggle Button */}
+              <div className="toggle-btn-group">
+                <button 
+                  onClick={() => setIsLogScale(false)} 
+                  className={`toggle-option-btn ${!isLogScale ? 'active' : ''}`}
+                >
+                  LIN
+                </button>
+                <button 
+                  onClick={() => setIsLogScale(true)} 
+                  className={`toggle-option-btn ${isLogScale ? 'active' : ''}`}
+                >
+                  LOG
+                </button>
               </div>
+            </h3>
+
+            {/* 1. Price Chart Pane */}
+            <div style={{ position: 'relative', width: '100%' }}>
+              {/* Floating Overlay Legend for Price Chart */}
+              <div style={{ position: 'absolute', top: '12px', left: '16px', zIndex: 10, pointerEvents: 'none', display: 'flex', flexDirection: 'column', gap: '4px', background: 'var(--bg-surface)', border: '1px solid var(--border-muted)', padding: '6px 12px', borderRadius: '4px', opacity: 0.9 }}>
+                <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--color-text-primary)', fontFamily: 'var(--font-mono)' }}>
+                  BTC/USD Price Action & Ichimoku
+                </div>
+                <div style={{ display: 'flex', gap: '10px', fontSize: '10px', color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)', flexWrap: 'wrap' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span className="legend-color-dot" style={{ backgroundColor: '#9f2f2d', display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%' }}></span>
+                    Tenkan
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span className="legend-color-dot" style={{ backgroundColor: '#1f6c9f', display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%' }}></span>
+                    Kijun
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span className="legend-color-dot" style={{ backgroundColor: 'rgba(52, 101, 56, 0.45)', display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%' }}></span>
+                    Span A
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span className="legend-color-dot" style={{ backgroundColor: 'rgba(159, 47, 45, 0.45)', display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%' }}></span>
+                    Span B
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span className="legend-color-dot" style={{ backgroundColor: 'rgba(107, 33, 168, 0.7)', display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%' }}></span>
+                    Chikou (Lagged)
+                  </span>
+                </div>
+              </div>
+              <div 
+                ref={priceChartRef} 
+                style={{ width: '100%', height: '350px' }}
+              />
             </div>
 
             {/* Gap separator line */}
             <div style={{ height: '1px', background: 'var(--border-muted)', margin: '0' }} />
 
-            {/* 2. Denoising Gates & Entropy Oscillator */}
-            <div style={{ paddingTop: '16px', paddingBottom: '16px' }}>
-              <h3 className="section-title">
-                <div className="section-title-left">
-                  <IconSettings />
-                  <span>Denoising Gates & Entropy Oscillator</span>
+            {/* 2. Oscillator Chart Pane */}
+            <div style={{ position: 'relative', width: '100%' }}>
+              {/* Floating Overlay Legend for Oscillator Chart */}
+              <div style={{ position: 'absolute', top: '12px', left: '16px', zIndex: 10, pointerEvents: 'none', display: 'flex', flexDirection: 'column', gap: '4px', background: 'var(--bg-surface)', border: '1px solid var(--border-muted)', padding: '6px 12px', borderRadius: '4px', opacity: 0.9 }}>
+                <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--color-text-primary)', fontFamily: 'var(--font-mono)' }}>
+                  Denoising Gates & Entropy Oscillator
                 </div>
-              </h3>
-
-              {/* Legend for Oscillators */}
-              <div className="chart-legend-box" style={{ marginTop: '8px', marginBottom: '12px' }}>
-                <div className="chart-legend-item">
-                  <span className="legend-color-dot" style={{ backgroundColor: '#d97706' }}></span>
-                  <span>IMO</span>
-                </div>
-                <div className="chart-legend-item">
-                  <span className="legend-color-dot" style={{ backgroundColor: '#787774' }}></span>
-                  <span>Threshold</span>
-                </div>
-                <div className="chart-legend-item">
-                  <span className="legend-color-dot" style={{ backgroundColor: '#7c3aed' }}></span>
-                  <span>Shannon Entropy</span>
-                </div>
-                <div className="chart-legend-item">
-                  <span className="legend-color-dot" style={{ backgroundColor: '#0891b2' }}></span>
-                  <span>S_Chikou</span>
+                <div style={{ display: 'flex', gap: '10px', fontSize: '10px', color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span className="legend-color-dot" style={{ backgroundColor: '#d97706', display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%' }}></span>
+                    IMO
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span className="legend-color-dot" style={{ backgroundColor: '#787774', display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%' }}></span>
+                    Threshold
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span className="legend-color-dot" style={{ backgroundColor: '#7c3aed', display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%' }}></span>
+                    Entropy
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span className="legend-color-dot" style={{ backgroundColor: '#0891b2', display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%' }}></span>
+                    S_Chikou
+                  </span>
                 </div>
               </div>
-
-              {/* Oscillator Chart Pane */}
-              <div style={{ position: 'relative' }}>
-                <div 
-                  ref={oscChartRef} 
-                  style={{ width: '100%', height: '200px' }}
-                />
-              </div>
+              <div 
+                ref={oscChartRef} 
+                style={{ width: '100%', height: '200px' }}
+              />
             </div>
 
             {/* Gap separator line */}
             <div style={{ height: '1px', background: 'var(--border-muted)', margin: '0' }} />
 
-            {/* 3. Cumulative Equity Growth */}
+            {/* 3. Cumulative Equity Growth Pane */}
             {timeseries.length > 0 && (
-              <div style={{ paddingTop: '16px' }}>
-                <h3 className="section-title">
-                  <div className="section-title-left">
-                    <IconTrending />
-                    <span>Cumulative Equity Growth</span>
+              <div style={{ position: 'relative', width: '100%' }}>
+                {/* Floating Overlay Legend for Equity Chart */}
+                <div style={{ position: 'absolute', top: '12px', left: '16px', zIndex: 10, pointerEvents: 'none', display: 'flex', flexDirection: 'column', gap: '4px', background: 'var(--bg-surface)', border: '1px solid var(--border-muted)', padding: '6px 12px', borderRadius: '4px', opacity: 0.9 }}>
+                  <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--color-text-primary)', fontFamily: 'var(--font-mono)' }}>
+                    Cumulative Equity Growth
                   </div>
-                </h3>
-
-                {/* Legend for Equity Series */}
-                <div className="chart-legend-box" style={{ marginTop: '8px', marginBottom: '12px' }}>
-                  <div className="chart-legend-item">
-                    <span className="legend-color-dot" style={{ backgroundColor: activeTheme === 'dark' ? '#00f0ff' : '#111111' }}></span>
-                    <span>Strategy (Net)</span>
-                  </div>
-                  <div className="chart-legend-item">
-                    <span className="legend-color-dot" style={{ backgroundColor: '#888888' }}></span>
-                    <span>BTC Buy & Hold</span>
+                  <div style={{ display: 'flex', gap: '10px', fontSize: '10px', color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span className="legend-color-dot" style={{ backgroundColor: activeTheme === 'dark' ? '#00f0ff' : '#111111', display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%' }}></span>
+                      Strategy (Net)
+                    </span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span className="legend-color-dot" style={{ backgroundColor: '#888888', display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%' }}></span>
+                      BTC Buy & Hold
+                    </span>
                   </div>
                 </div>
-
-                {/* Equity Chart Pane */}
-                <div style={{ position: 'relative' }}>
-                  <div 
-                    ref={equityChartRef} 
-                    style={{ width: '100%', height: '220px' }}
-                  />
-                </div>
+                <div 
+                  ref={equityChartRef} 
+                  style={{ width: '100%', height: '220px' }}
+                />
               </div>
             )}
           </div>

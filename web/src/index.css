@@ -391,7 +391,7 @@ body {
   color: var(--color-text-muted);
 }
 
-.param-group input[type="number"] {
+.param-group input {
   width: 100%;
   box-sizing: border-box;
   background: var(--bg-deep);
@@ -404,7 +404,7 @@ body {
   transition: border-color 0.2s;
 }
 
-.param-group input[type="number"]:focus {
+.param-group input:focus {
   border-color: var(--color-text-primary);
   outline: none;
 }

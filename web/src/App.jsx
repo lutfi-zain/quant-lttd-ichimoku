@@ -55,6 +55,32 @@ function App() {
   const [paramsExpanded, setParamsExpanded] = useState(false); // Collapsible parameter tuning sidebar (default hide)
   const [isLogScale, setIsLogScale] = useState(false); // Log/Lin toggle for BTC Chart
 
+  // Theme State (default: system)
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('ichimoku-theme') || 'system';
+  });
+  const [activeTheme, setActiveTheme] = useState('light');
+
+  useEffect(() => {
+    localStorage.setItem('ichimoku-theme', theme);
+    if (theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleChange = (e) => {
+        setActiveTheme(e.matches ? 'dark' : 'light');
+      };
+      setActiveTheme(mediaQuery.matches ? 'dark' : 'light');
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
+    } else {
+      setActiveTheme(theme);
+    }
+  }, [theme]);
+
+  useEffect(() => {
+    document.documentElement.classList.remove('theme-light', 'theme-dark');
+    document.documentElement.classList.add(`theme-${activeTheme}`);
+  }, [activeTheme]);
+
   // Backtest Parameters State
   const [params, setParams] = useState({
     p1: 20,
@@ -102,32 +128,33 @@ function App() {
     oscChartRef.current.innerHTML = '';
 
     const width = priceChartRef.current.clientWidth;
+    const isDark = activeTheme === 'dark';
 
-    // Common chart options matching Off-White Minimalist UI
+    // Common chart options matching Off-White / Dark Minimalist UI
     const chartOptions = {
       width: width,
       layout: {
-        background: { type: 'solid', color: '#ffffff' },
-        textColor: '#2f3437',
+        background: { type: 'solid', color: isDark ? '#151617' : '#ffffff' },
+        textColor: isDark ? '#c7c9d3' : '#2f3437',
         fontSize: 11,
         fontFamily: 'Geist Mono, SF Mono, monospace'
       },
       grid: {
-        vertLines: { color: '#eaeaea', style: 2 },
-        horzLines: { color: '#eaeaea', style: 2 }
+        vertLines: { color: isDark ? '#242528' : '#eaeaea', style: 2 },
+        horzLines: { color: isDark ? '#242528' : '#eaeaea', style: 2 }
       },
       rightPriceScale: {
-        borderColor: '#eaeaea',
-        textColor: '#2f3437',
+        borderColor: isDark ? '#242528' : '#eaeaea',
+        textColor: isDark ? '#c7c9d3' : '#2f3437',
         minimumWidth: 80 // Aligned Y-axis widths
       },
       timeScale: {
-        borderColor: '#eaeaea',
-        textColor: '#2f3437'
+        borderColor: isDark ? '#242528' : '#eaeaea',
+        textColor: isDark ? '#c7c9d3' : '#2f3437'
       },
       crosshair: {
-        vertLine: { color: '#888888', width: 1, style: 1 },
-        horzLine: { color: '#888888', width: 1, style: 1 }
+        vertLine: { color: isDark ? '#6b7280' : '#888888', width: 1, style: 1 },
+        horzLine: { color: isDark ? '#6b7280' : '#888888', width: 1, style: 1 }
       }
     };
 
@@ -158,11 +185,11 @@ function App() {
     // --- POPULATE PRICE CHART ---
     // Candlestick Series using desaturated pastels
     const candleSeries = priceChart.addSeries(CandlestickSeries, {
-      upColor: '#346538',
-      downColor: '#9f2f2d',
+      upColor: isDark ? '#10b981' : '#346538',
+      downColor: isDark ? '#ef4444' : '#9f2f2d',
       borderVisible: false,
-      wickUpColor: '#346538',
-      wickDownColor: '#9f2f2d'
+      wickUpColor: isDark ? '#10b981' : '#346538',
+      wickDownColor: isDark ? '#ef4444' : '#9f2f2d'
     });
 
     const candleData = timeseries.map(d => ({
@@ -176,10 +203,10 @@ function App() {
     candleSeries.setData(candleData);
 
     // Ichimoku Lines
-    const tenkanSeries = priceChart.addSeries(LineSeries, { color: '#9f2f2d', lineWidth: 1.5, title: 'Tenkan-sen' });
-    const kijunSeries = priceChart.addSeries(LineSeries, { color: '#1f6c9f', lineWidth: 1.8, title: 'Kijun-sen' });
-    const spanASeries = priceChart.addSeries(LineSeries, { color: 'rgba(52, 101, 56, 0.25)', lineWidth: 1.2, title: 'Span A' });
-    const spanBSeries = priceChart.addSeries(LineSeries, { color: 'rgba(159, 47, 45, 0.25)', lineWidth: 1.2, title: 'Span B' });
+    const tenkanSeries = priceChart.addSeries(LineSeries, { color: isDark ? '#f87171' : '#9f2f2d', lineWidth: 1.5, title: 'Tenkan-sen' });
+    const kijunSeries = priceChart.addSeries(LineSeries, { color: isDark ? '#60a5fa' : '#1f6c9f', lineWidth: 1.8, title: 'Kijun-sen' });
+    const spanASeries = priceChart.addSeries(LineSeries, { color: isDark ? 'rgba(52, 211, 153, 0.25)' : 'rgba(52, 101, 56, 0.25)', lineWidth: 1.2, title: 'Span A' });
+    const spanBSeries = priceChart.addSeries(LineSeries, { color: isDark ? 'rgba(248, 113, 113, 0.25)' : 'rgba(159, 47, 45, 0.25)', lineWidth: 1.2, title: 'Span B' });
 
     tenkanSeries.setData(timeseries.map(d => ({ time: d.Date, value: d.tenkan_sen })).filter(d => d.value !== null));
     kijunSeries.setData(timeseries.map(d => ({ time: d.Date, value: d.kijun_sen })).filter(d => d.value !== null));
@@ -188,7 +215,7 @@ function App() {
 
     // Traditional Chikou Span (shifted backward by p2 periods)
     const traditionalChikouSeries = priceChart.addSeries(LineSeries, {
-      color: 'rgba(107, 33, 168, 0.45)', // Sleek purple pastel
+      color: isDark ? 'rgba(168, 85, 247, 0.5)' : 'rgba(107, 33, 168, 0.45)', // Sleek purple pastel
       lineWidth: 1.5,
       title: 'Chikou Span (Lagged)'
     });
@@ -213,7 +240,7 @@ function App() {
         markers.push({
           time: timeseries[i].Date,
           position: 'belowBar',
-          color: '#346538',
+          color: isDark ? '#10b981' : '#346538',
           shape: 'arrowUp',
           text: 'BUY'
         });
@@ -221,7 +248,7 @@ function App() {
         markers.push({
           time: timeseries[i].Date,
           position: 'aboveBar',
-          color: '#9f2f2d',
+          color: isDark ? '#ef4444' : '#9f2f2d',
           shape: 'arrowDown',
           text: 'SELL'
         });
@@ -232,7 +259,7 @@ function App() {
     // --- POPULATE OSCILLATOR CHART ---
     // Composite IMO Series
     const imoSeries = oscChart.addSeries(LineSeries, {
-      color: '#d97706',
+      color: isDark ? '#fbbf24' : '#d97706',
       lineWidth: 1.8,
       title: 'IMO'
     });
@@ -240,7 +267,7 @@ function App() {
 
     // Entry Threshold Series (Dashed)
     const threshSeries = oscChart.addSeries(LineSeries, {
-      color: '#787774',
+      color: isDark ? '#9ca3af' : '#787774',
       lineWidth: 1.2,
       lineStyle: LineStyle.Dashed,
       title: 'Entry Threshold'
@@ -249,7 +276,7 @@ function App() {
 
     // Shannon Entropy Series
     const entropySeries = oscChart.addSeries(LineSeries, {
-      color: '#7c3aed',
+      color: isDark ? '#a78bfa' : '#7c3aed',
       lineWidth: 1.5,
       title: 'Entropy'
     });
@@ -257,7 +284,7 @@ function App() {
 
     // S_Chikou Momentum Series
     const chikouSeries = oscChart.addSeries(LineSeries, {
-      color: '#0891b2',
+      color: isDark ? '#22d3ee' : '#0891b2',
       lineWidth: 1.2,
       title: 'S_Chikou'
     });
@@ -266,7 +293,7 @@ function App() {
     // Add Horizontal Price Lines for thresholds (baseline limits)
     entropySeries.createPriceLine({
       price: params.entropy_thresh,
-      color: 'rgba(159, 47, 45, 0.4)',
+      color: isDark ? 'rgba(239, 68, 68, 0.4)' : 'rgba(159, 47, 45, 0.4)',
       lineWidth: 1,
       lineStyle: LineStyle.Dotted,
       axisLabelVisible: true,
@@ -275,7 +302,7 @@ function App() {
 
     chikouSeries.createPriceLine({
       price: params.chikou_thresh,
-      color: 'rgba(159, 47, 45, 0.4)',
+      color: isDark ? 'rgba(239, 68, 68, 0.4)' : 'rgba(159, 47, 45, 0.4)',
       lineWidth: 1,
       lineStyle: LineStyle.Dotted,
       axisLabelVisible: true,
@@ -340,7 +367,7 @@ function App() {
       priceChart.remove();
       oscChart.remove();
     };
-  }, [timeseries, params.entropy_thresh, params.chikou_thresh, params.t_entry, isLogScale]);
+  }, [timeseries, params.entropy_thresh, params.chikou_thresh, params.t_entry, isLogScale, activeTheme]);
 
   const fetchStatus = async () => {
     try {
@@ -429,26 +456,26 @@ function App() {
       background: 'transparent',
       toolbar: { show: false }
     },
-    theme: { mode: 'light' },
-    colors: ['#111111', '#888888'],
+    theme: { mode: activeTheme },
+    colors: [activeTheme === 'dark' ? '#00f0ff' : '#111111', '#888888'],
     stroke: { curve: 'straight', width: 2 },
     xaxis: {
       type: 'datetime',
       categories: categories,
-      labels: { style: { colors: '#2f3437', fontFamily: 'Geist Mono, monospace' } },
+      labels: { style: { colors: activeTheme === 'dark' ? '#c7c9d3' : '#2f3437', fontFamily: 'Geist Mono, monospace' } },
       axisBorder: { show: false },
       axisTicks: { show: false }
     },
     yaxis: {
-      title: { text: 'Cumulative Return (%)', style: { color: '#2f3437', fontFamily: 'Switzer, sans-serif' } },
+      title: { text: 'Cumulative Return (%)', style: { color: activeTheme === 'dark' ? '#c7c9d3' : '#2f3437', fontFamily: 'Switzer, sans-serif' } },
       labels: { 
-        style: { colors: '#2f3437', fontFamily: 'Geist Mono, monospace' },
+        style: { colors: activeTheme === 'dark' ? '#c7c9d3' : '#2f3437', fontFamily: 'Geist Mono, monospace' },
         formatter: (val) => `${val.toLocaleString()}%`
       }
     },
-    grid: { borderColor: '#eaeaea', strokeDashArray: 4 },
+    grid: { borderColor: activeTheme === 'dark' ? '#242528' : '#eaeaea', strokeDashArray: 4 },
     tooltip: { x: { format: 'dd MMM yyyy' } },
-    legend: { labels: { colors: '#111111' } }
+    legend: { labels: { colors: activeTheme === 'dark' ? '#eceefe' : '#111111' } }
   };
 
   return (
@@ -463,14 +490,37 @@ function App() {
           </div>
         </div>
         
-        <div className="status-badge" onClick={fetchStatus} style={{ cursor: 'pointer' }}>
-          <div className="status-dot"></div>
-          <span>API Backend: {backendStatus.status === 'ready' ? 'ONLINE' : 'OFFLINE'}</span>
-          {backendStatus.date_range?.bars && (
-            <span style={{ color: 'var(--color-text-muted)', marginLeft: '8px' }}>
-              ({backendStatus.date_range.bars} bars)
-            </span>
-          )}
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div className="theme-toggle-group">
+            <button 
+              onClick={() => setTheme('system')} 
+              className={`theme-option-btn ${theme === 'system' ? 'active' : ''}`}
+            >
+              System
+            </button>
+            <button 
+              onClick={() => setTheme('light')} 
+              className={`theme-option-btn ${theme === 'light' ? 'active' : ''}`}
+            >
+              Light
+            </button>
+            <button 
+              onClick={() => setTheme('dark')} 
+              className={`theme-option-btn ${theme === 'dark' ? 'active' : ''}`}
+            >
+              Dark
+            </button>
+          </div>
+
+          <div className={`status-badge ${backendStatus.status === 'ready' ? '' : 'offline'}`} onClick={fetchStatus} style={{ cursor: 'pointer' }}>
+            <div className="status-dot"></div>
+            <span>API Backend: {backendStatus.status === 'ready' ? 'ONLINE' : 'OFFLINE'}</span>
+            {backendStatus.date_range?.bars && (
+              <span style={{ color: 'var(--color-text-muted)', marginLeft: '8px' }}>
+                ({backendStatus.date_range.bars} bars)
+              </span>
+            )}
+          </div>
         </div>
       </header>
 

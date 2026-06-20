@@ -5,7 +5,16 @@
   --font-mono: 'Geist Mono', monospace;
   --font-serif: 'Instrument Serif', serif;
 
-  /* Premium Minimalist Light Theme Palette */
+  --shadow-sm: none;
+  --shadow-md: none;
+  
+  font-family: var(--font-sans);
+  margin: 0;
+  padding: 0;
+}
+
+/* Light Theme Variables */
+:root, .theme-light {
   --bg-deep: #FBFBFA;
   --bg-surface: #FFFFFF;
   --bg-surface-hover: #F7F6F3;
@@ -16,7 +25,6 @@
   --color-text-secondary: #2F3437;
   --color-text-muted: #787774;
   
-  /* Pastels Semantic Colors */
   --badge-success-bg: #EDF3EC;
   --badge-success-text: #346538;
   --badge-danger-bg: #FDEBEC;
@@ -26,22 +34,43 @@
   --badge-info-bg: #E1F3FE;
   --badge-info-text: #1F6C9F;
   
-  --shadow-sm: none;
-  --shadow-md: none;
+  --accent-button-bg: #111111;
+  --accent-button-text: #ffffff;
+}
+
+/* Dark Theme Variables */
+.theme-dark {
+  --bg-deep: #0C0D0E;
+  --bg-surface: #151617;
+  --bg-surface-hover: #1E1F21;
+  --border-muted: #242528;
+  --border-active: #404247;
   
-  font-family: var(--font-sans);
-  background-color: var(--bg-deep);
-  color: var(--color-text-primary);
-  margin: 0;
-  padding: 0;
+  --color-text-primary: #ECEEFE;
+  --color-text-secondary: #C7C9D3;
+  --color-text-muted: #6B7280;
+
+  --badge-success-bg: rgba(16, 185, 129, 0.12);
+  --badge-success-text: #34d399;
+  --badge-danger-bg: rgba(239, 68, 68, 0.12);
+  --badge-danger-text: #f87171;
+  --badge-warning-bg: rgba(245, 158, 11, 0.12);
+  --badge-warning-text: #fbbf24;
+  --badge-info-bg: rgba(59, 130, 246, 0.12);
+  --badge-info-text: #60a5fa;
+
+  --accent-button-bg: #ECEEFE;
+  --accent-button-text: #151617;
 }
 
 body {
   margin: 0;
   padding: 0;
   background-color: var(--bg-deep);
+  color: var(--color-text-primary);
   min-height: 100vh;
   overflow-x: hidden;
+  transition: background-color 0.2s, color 0.2s;
 }
 
 /* Scrollbar styling */
@@ -627,4 +656,36 @@ body {
 }
 .animate-spin {
   animation: spin 1s linear infinite;
+}
+
+/* Theme Toggle styles */
+.theme-toggle-group {
+  display: inline-flex;
+  border: 1px solid var(--border-muted);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--bg-surface);
+  margin-right: 16px;
+}
+
+.theme-option-btn {
+  background: transparent;
+  border: none;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 6px 10px;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.theme-option-btn:hover {
+  background-color: var(--bg-surface-hover);
+  color: var(--color-text-secondary);
+}
+
+.theme-option-btn.active {
+  background: var(--accent-button-bg);
+  color: var(--accent-button-text);
 }

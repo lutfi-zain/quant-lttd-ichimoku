@@ -14,14 +14,8 @@ A rigorous mathematical and algorithmic system designed to quantify and optimize
 
 ## 📸 Dashboard Preview
 
-### Sleek, Data-Dense Obsidian Ledger Theme
-![Dashboard Main View](docs/dashboard_preview.png)
-
-### Synchronized Multi-Pane Analytics (Maximized View)
-![Maximized Chart Panels](docs/dashboard_maximized_charts.png)
-
-### Price Chart & Execution Signal Focus (Maximized View)
-![Maximized Price Focus](docs/dashboard_maximized_price.png)
+![top](docs/top.png)
+![bottom](docs/bottom.png)
 
 ---
 

@@ -56,6 +56,22 @@ function App() {
   const [isLogScale, setIsLogScale] = useState(true); // Log/Lin toggle for BTC Chart (default logarithmic)
   const [isMaximized, setIsMaximized] = useState(false); // Fullscreen maximize chart mode
 
+  // Responsive helper for chart heights
+  const getChartHeights = (maximized) => {
+    const isMobile = window.innerWidth <= 600;
+    if (maximized) {
+      const pHeight = Math.floor((window.innerHeight - 56) * 0.65);
+      const oHeight = window.innerHeight - 56 - pHeight;
+      return { priceHeight: pHeight, oscHeight: oHeight, equityHeight: 0 };
+    } else {
+      return {
+        priceHeight: isMobile ? 250 : 350,
+        oscHeight: isMobile ? 150 : 200,
+        equityHeight: isMobile ? 160 : 220
+      };
+    }
+  };
+
   // Theme State (default: system)
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('ichimoku-theme') || 'system';
@@ -166,10 +182,12 @@ function App() {
       }
     };
 
+    const heights = getChartHeights(isMaximizedRef.current);
+
     // 2. Create Price Chart (Upper Pane)
     const priceChart = createChart(priceChartRef.current, {
       ...chartOptions,
-      height: isMaximizedRef.current ? Math.floor((window.innerHeight - 56) * 0.65) : 350,
+      height: heights.priceHeight,
       timeScale: {
         ...chartOptions.timeScale,
         visible: false // Hide time axis on price chart to save vertical space
@@ -179,7 +197,7 @@ function App() {
     // 3. Create Oscillator Chart (Middle Pane)
     const oscChart = createChart(oscChartRef.current, {
       ...chartOptions,
-      height: isMaximizedRef.current ? (window.innerHeight - 56 - Math.floor((window.innerHeight - 56) * 0.65)) : 200,
+      height: heights.oscHeight,
       timeScale: {
         ...chartOptions.timeScale,
         visible: false // Hide time axis on oscillator chart to save vertical space
@@ -189,7 +207,7 @@ function App() {
     // 4. Create Cumulative Equity Growth Chart (Lower Pane)
     const equityChart = createChart(equityChartRef.current, {
       ...chartOptions,
-      height: 220,
+      height: heights.equityHeight,
       localization: {
         priceFormatter: price => `${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`
       }
@@ -363,13 +381,11 @@ function App() {
       if (entries.length === 0) return;
       const { width: newWidth, height: newHeight } = entries[0].contentRect;
       
-      const pHeight = isMaximizedRef.current ? Math.floor((window.innerHeight - 56) * 0.65) : 350;
-      const oHeight = isMaximizedRef.current ? (window.innerHeight - 56 - pHeight) : 200;
-      const eHeight = 220;
+      const heights = getChartHeights(isMaximizedRef.current);
       
-      priceChart.resize(newWidth, pHeight);
-      oscChart.resize(newWidth, oHeight);
-      equityChart.resize(newWidth, eHeight);
+      priceChart.resize(newWidth, heights.priceHeight);
+      oscChart.resize(newWidth, heights.oscHeight);
+      equityChart.resize(newWidth, heights.equityHeight);
     });
 
     if (chartContainerRef.current) {
@@ -460,13 +476,11 @@ function App() {
     if (!priceChart || !oscChart || !equityChart || !chartContainerRef.current) return;
 
     const width = chartContainerRef.current.clientWidth;
-    const priceHeight = isMaximized ? Math.floor((window.innerHeight - 56) * 0.65) : 350;
-    const oscHeight = isMaximized ? (window.innerHeight - 56 - priceHeight) : 200;
-    const equityHeight = 220;
+    const heights = getChartHeights(isMaximized);
 
-    priceChart.resize(width, priceHeight);
-    oscChart.resize(width, oscHeight);
-    equityChart.resize(width, equityHeight);
+    priceChart.resize(width, heights.priceHeight);
+    oscChart.resize(width, heights.oscHeight);
+    equityChart.resize(width, heights.equityHeight);
 
     // Toggle date axis visibility on oscillator chart based on maximized state
     oscChart.timeScale().applyOptions({

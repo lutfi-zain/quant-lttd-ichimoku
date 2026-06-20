@@ -370,41 +370,62 @@ function App() {
     // --- SINKRONISASI CROSSHAIR MOVE (WITH RESET ON MOUSE OUT) ---
     priceChart.subscribeCrosshairMove(param => {
       if (isSyncing) return;
-      isSyncing = true;
-      if (param && param.time) {
-        oscChart.setCrosshairPosition(param.time);
-        equityChart.setCrosshairPosition(param.time);
-      } else {
+      if (param && param.sourceEvent) {
+        isSyncing = true;
+        if (param.time) {
+          oscChart.setCrosshairPosition(undefined, param.time, imoSeries);
+          equityChart.setCrosshairPosition(undefined, param.time, stratSeries);
+        } else {
+          oscChart.clearCrosshairPosition();
+          equityChart.clearCrosshairPosition();
+        }
+        isSyncing = false;
+      } else if (!param) {
+        isSyncing = true;
         oscChart.clearCrosshairPosition();
         equityChart.clearCrosshairPosition();
+        isSyncing = false;
       }
-      isSyncing = false;
     });
 
     oscChart.subscribeCrosshairMove(param => {
       if (isSyncing) return;
-      isSyncing = true;
-      if (param && param.time) {
-        priceChart.setCrosshairPosition(param.time);
-        equityChart.setCrosshairPosition(param.time);
-      } else {
+      if (param && param.sourceEvent) {
+        isSyncing = true;
+        if (param.time) {
+          priceChart.setCrosshairPosition(undefined, param.time, candleSeries);
+          equityChart.setCrosshairPosition(undefined, param.time, stratSeries);
+        } else {
+          priceChart.clearCrosshairPosition();
+          equityChart.clearCrosshairPosition();
+        }
+        isSyncing = false;
+      } else if (!param) {
+        isSyncing = true;
         priceChart.clearCrosshairPosition();
         equityChart.clearCrosshairPosition();
+        isSyncing = false;
       }
-      isSyncing = false;
     });
 
     equityChart.subscribeCrosshairMove(param => {
       if (isSyncing) return;
-      isSyncing = true;
-      if (param && param.time) {
-        priceChart.setCrosshairPosition(param.time);
-        oscChart.setCrosshairPosition(param.time);
-      } else {
+      if (param && param.sourceEvent) {
+        isSyncing = true;
+        if (param.time) {
+          priceChart.setCrosshairPosition(undefined, param.time, candleSeries);
+          oscChart.setCrosshairPosition(undefined, param.time, imoSeries);
+        } else {
+          priceChart.clearCrosshairPosition();
+          oscChart.clearCrosshairPosition();
+        }
+        isSyncing = false;
+      } else if (!param) {
+        isSyncing = true;
         priceChart.clearCrosshairPosition();
         oscChart.clearCrosshairPosition();
+        isSyncing = false;
       }
-      isSyncing = false;
     });
 
     // Fit content initially
@@ -873,97 +894,102 @@ function App() {
             </div>
           </div>
 
-          {/* Cumulative Equity Growth Chart */}
+          {/* Cumulative Equity Growth & Completed Trades Log Card */}
           {timeseries.length > 0 && (
             <div className="chart-container">
-              <h3 className="section-title">
-                <div className="section-title-left">
-                  <IconTrending />
-                  <span>Cumulative Equity Growth</span>
-                </div>
-              </h3>
+              <div>
+                <h3 className="section-title" style={{ marginBottom: '16px' }}>
+                  <div className="section-title-left">
+                    <IconTrending />
+                    <span>Cumulative Equity Growth</span>
+                  </div>
+                </h3>
 
-              {/* Legend for Equity Series */}
-              <div className="chart-legend-box">
-                <div className="chart-legend-item">
-                  <span className="legend-color-dot" style={{ backgroundColor: activeTheme === 'dark' ? '#00f0ff' : '#111111' }}></span>
-                  <span>Strategy (Net)</span>
+                {/* Legend for Equity Series */}
+                <div className="chart-legend-box" style={{ marginBottom: '12px' }}>
+                  <div className="chart-legend-item">
+                    <span className="legend-color-dot" style={{ backgroundColor: activeTheme === 'dark' ? '#00f0ff' : '#111111' }}></span>
+                    <span>Strategy (Net)</span>
+                  </div>
+                  <div className="chart-legend-item">
+                    <span className="legend-color-dot" style={{ backgroundColor: '#888888' }}></span>
+                    <span>BTC Buy & Hold</span>
+                  </div>
                 </div>
-                <div className="chart-legend-item">
-                  <span className="legend-color-dot" style={{ backgroundColor: '#888888' }}></span>
-                  <span>BTC Buy & Hold</span>
+
+                {/* Equity Chart Pane */}
+                <div style={{ position: 'relative' }}>
+                  <div 
+                    ref={equityChartRef} 
+                    style={{ width: '100%', height: '250px' }}
+                  />
                 </div>
               </div>
 
-              {/* Equity Chart Pane */}
-              <div style={{ position: 'relative' }}>
-                <div 
-                  ref={equityChartRef} 
-                  style={{ width: '100%', height: '250px' }}
-                />
+              {/* Separator Line */}
+              <div style={{ height: '1px', background: 'var(--border-muted)', margin: '24px 0' }} />
+
+              {/* Historical Trades Log Table Section */}
+              <div>
+                <h3 className="section-title" style={{ marginBottom: '16px' }}>
+                  <div className="section-title-left">
+                    <IconDatabase />
+                    <span>Completed Trades Log</span>
+                  </div>
+                  {trades.length > 0 && (
+                    <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}>
+                      {trades.length} trades total
+                    </span>
+                  )}
+                </h3>
+
+                <div className="table-wrapper">
+                  <table className="trades-table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Entry Date</th>
+                        <th>Entry Price</th>
+                        <th>Exit Date</th>
+                        <th>Exit Price</th>
+                        <th>Return (%)</th>
+                        <th>Hold Days</th>
+                        <th>Exit Reason</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {trades.length > 0 ? (
+                        trades.map(trade => (
+                          <tr key={trade.id}>
+                            <td>#{trade.id}</td>
+                            <td>{trade.entry_date}</td>
+                            <td>${trade.entry_price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                            <td>{trade.exit_date}</td>
+                            <td>${trade.exit_price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                            <td className={trade.return >= 0 ? "profit" : "loss"}>
+                              {trade.return >= 0 ? '+' : ''}{trade.return.toFixed(2)}%
+                            </td>
+                            <td>{trade.holding_days}d</td>
+                            <td>
+                              <span className={`m-badge ${trade.exit_reason.toLowerCase().includes('chikou') ? 'info' : 'warning'}`}>
+                                {trade.exit_reason}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={8} style={{ textAlign: 'center', padding: '24px', color: 'var(--color-text-muted)' }}>
+                            No trades completed within the backtest range.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
-
-          {/* Historical Trades Log Table */}
-          <div className="table-card">
-            <h3 className="section-title" style={{ marginBottom: '20px' }}>
-              <div className="section-title-left">
-                <IconDatabase />
-                <span>Completed Trades Log</span>
-              </div>
-              {trades.length > 0 && (
-                <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}>
-                  {trades.length} trades total
-                </span>
-              )}
-            </h3>
-
-            <div className="table-wrapper">
-              <table className="trades-table">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Entry Date</th>
-                    <th>Entry Price</th>
-                    <th>Exit Date</th>
-                    <th>Exit Price</th>
-                    <th>Return (%)</th>
-                    <th>Hold Days</th>
-                    <th>Exit Reason</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {trades.length > 0 ? (
-                    trades.map(trade => (
-                      <tr key={trade.id}>
-                        <td>#{trade.id}</td>
-                        <td>{trade.entry_date}</td>
-                        <td>${trade.entry_price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                        <td>{trade.exit_date}</td>
-                        <td>${trade.exit_price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                        <td className={trade.return >= 0 ? "profit" : "loss"}>
-                          {trade.return >= 0 ? '+' : ''}{trade.return.toFixed(2)}%
-                        </td>
-                        <td>{trade.holding_days}d</td>
-                        <td>
-                          <span className={`m-badge ${trade.exit_reason.toLowerCase().includes('chikou') ? 'info' : 'warning'}`}>
-                            {trade.exit_reason}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={8} style={{ textAlign: 'center', padding: '24px', color: 'var(--color-text-muted)' }}>
-                        No trades completed within the backtest range.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </main>
       </div>
     </div>

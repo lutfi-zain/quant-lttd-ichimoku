@@ -169,7 +169,7 @@ def api_backtest(req: BacktestRequest):
         # 7. Build timeseries response (for interactive charts)
         # Select key columns and replace NaNs with None/null for JSON compatibility
         timeseries_df = df_back[[
-            'Close', 'Cum_Market', 'Cum_Strat', 'IMO', 'IMO_Std', 'ER', 'Entropy', 'Pos', 'Active_Pos',
+            'Open', 'High', 'Low', 'Close', 'Cum_Market', 'Cum_Strat', 'IMO', 'IMO_Std', 'ER', 'Entropy', 'Pos', 'Active_Pos',
             'S_Chikou', 'S_TK', 'S_Cloud', 'S_Future', 'tenkan_sen', 'kijun_sen', 'senkou_span_a', 'senkou_span_b'
         ]].copy()
         

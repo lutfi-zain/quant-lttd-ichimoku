@@ -18,7 +18,7 @@ int entropy_bins = input.int(6, title="Entropy Bins")
 // Strategy Thresholds
 float CHIKOU_THRESH = input.float(-0.30, title="Chikou Exit Threshold")
 float IMMUNITY_THRESH = input.float(0.50, title="IMO Immunity Threshold")
-float ENTROPY_THRESH = input.float(2.271, title="Entropy Entry Threshold")
+float ENTROPY_THRESH = input.float(2.15, title="Entropy Entry Threshold")
 float IMO_MIN_LIMIT = input.float(-0.30, title="IMO Min Limit (Above Cloud)")
 float IMO_EXIT_BULL = input.float(-0.30, title="IMO Exit Bull (Above Cloud)")
 float ROC_GATE_LIMIT = input.float(-0.20, title="ROC Crash Gate Limit")
@@ -55,17 +55,17 @@ f_supersmoother(float src, int len) =>
 f_tanh(float x) =>
     x > 15.0 ? 1.0 : x < -15.0 ? -1.0 : (math.exp(2.0 * x) - 1.0) / (math.exp(2.0 * x) + 1.0)
 
-// Shannon Entropy (Complexity Filter) - Robust Version
-f_shannon_entropy(float ret_series, int window, int bins) =>
-    float min_ret = ta.lowest(ret_series, window)
-    float max_ret = ta.highest(ret_series, window)
+// Shannon Entropy (Complexity Filter) - Robust Array Version
+f_shannon_entropy(float[] vals, int bins) =>
+    int window = array.size(vals)
+    float min_ret = array.min(vals)
+    float max_ret = array.max(vals)
     float bin_width = (max_ret - min_ret) / bins
     
-    var int[] counts = array.new<int>(bins, 0)
-    array.fill(counts, 0)
+    int[] counts = array.new<int>(bins, 0)
     
     for i = 0 to window - 1
-        float val = ret_series[i]
+        float val = array.get(vals, i)
         if bin_width > 0.0
             int bin_idx = math.min(bins - 1, math.floor((val - min_ret) / bin_width))
             array.set(counts, bin_idx, array.get(counts, bin_idx) + 1)
@@ -131,7 +131,13 @@ float ER = rolling_vol > 0.0 ? net_change / rolling_vol : 0.0
 
 // Shannon Entropy (Complexity filter)
 float btc_ret = nz(ta.change(close) / close[1], 0.0)
-float Entropy = f_shannon_entropy(btc_ret, entropy_window, entropy_bins)
+
+var float[] ret_history = array.new<float>(0)
+array.push(ret_history, btc_ret)
+if array.size(ret_history) > entropy_window
+    array.shift(ret_history)
+
+float Entropy = array.size(ret_history) < entropy_window ? na : f_shannon_entropy(ret_history, entropy_bins)
 
 // Crash Gate ROC (30 days price momentum)
 float roc_gate = (close - nz(close[30], close)) / nz(close[30], 1.0)
@@ -246,7 +252,7 @@ plotshape(pos == 0.0 and nz(pos[1], 0.0) == 1.0, title="Sell Signal", style=shap
 // === TELEMETRY DASHBOARD ===
 // ==========================================
 var table info_table = table.new(position.top_right, 2, 6, bgcolor=color.new(color.black, 20), border_color=color.gray, border_width=1)
-if barstate.islast
+if barstate.islastconfirmedhistory
     table.cell(info_table, 0, 0, "Indicator", text_color=color.white, bgcolor=color.new(color.blue, 50))
     table.cell(info_table, 1, 0, "Value", text_color=color.white, bgcolor=color.new(color.blue, 50))
     

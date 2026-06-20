@@ -20,12 +20,12 @@ The core backtesting engine, feature generators, strategy parameters, HTML visua
 ## Codebase Architecture
 
 The project follows a modular structure under `src/ichimoku_quant/`:
-- [data.py](file:///run/media/lutfizain/Work/Projects/0.IDEATION/ichimoku/src/ichimoku_quant/data.py): Handles historical daily Bitcoin data fetching via yfinance.
-- [features.py](file:///run/media/lutfizain/Work/Projects/0.IDEATION/ichimoku/src/ichimoku_quant/features.py): Generates technical indicators (Ichimoku Spans, Ehler's SuperSmoother, normalized TK Cross, normalized S_Cloud, normalized S_Future, smoothed S_Chikou, stdev IMO, Efficiency Ratio, Shannon Entropy, and price ROC).
-- [strategy.py](file:///run/media/lutfizain/Work/Projects/0.IDEATION/ichimoku/src/ichimoku_quant/strategy.py): Implements entry/exit gates (low entropy, high efficiency, cloud confirmation, minimum holding period of 10 days, price ROC crash gate, and dynamic cloud immunity).
-- [backtest.py](file:///run/media/lutfizain/Work/Projects/0.IDEATION/ichimoku/src/ichimoku_quant/backtest.py): Simulates daily equity growth, returns, drawdowns, and Sharpe ratios.
-- [visuals.py](file:///run/media/lutfizain/Work/Projects/0.IDEATION/ichimoku/src/ichimoku_quant/visuals.py): Generates rich interactive HTML charts and dashboard files stored in `tmp/`.
-- [ichimoku_quant_v6.pinescript](file:///run/media/lutfizain/Work/Projects/0.IDEATION/ichimoku/ichimoku_quant_v6.pinescript): The TradingView-compatible Pine Script v6 strategy utilizing robust state representations.
+- [data.py](./src/ichimoku_quant/data.py): Handles historical daily Bitcoin data fetching via yfinance.
+- [features.py](./features.py): Generates technical indicators (Ichimoku Spans, Ehler's SuperSmoother, normalized TK Cross, normalized S_Cloud, normalized S_Future, smoothed S_Chikou, stdev IMO, Efficiency Ratio, Shannon Entropy, and price ROC).
+- [strategy.py](./strategy.py): Implements entry/exit gates (low entropy, high efficiency, cloud confirmation, minimum holding period of 10 days, price ROC crash gate, and dynamic cloud immunity).
+- [backtest.py](./backtest.py): Simulates daily equity growth, returns, drawdowns, and Sharpe ratios.
+- [visuals.py](./visuals.py): Generates rich interactive HTML charts and dashboard files stored in `tmp/`.
+- [ichimoku_quant_v6.pinescript](./ichimoku/ichimoku_quant_v6.pinescript): The TradingView-compatible Pine Script v6 strategy utilizing robust state representations.
 
 ## Evolution
 

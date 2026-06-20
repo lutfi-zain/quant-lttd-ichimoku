@@ -41,3 +41,11 @@ Evolve local / global AGENTS.md by spawning subagents periodically to learn from
 - **[2026-06-20]** Monaco Editor di TradingView mengabaikan event pembersihan keystroke (`Ctrl+A` + `Backspace`) yang dikirim melalui `dispatchEvent` JS biasa. Solusi andal 100% adalah menggunakan native CLI keyboard commands dari `agent-browser` (yaitu `agent-browser click ".monaco-editor" && agent-browser press Control+a && agent-browser press Backspace`).
 - **[2026-06-20]** Di TradingView, parameter `linewidth` pada fungsi `plot` harus berupa integer (`literal int` atau `input int`), bukan float. Memberikan nilai float seperti `1.5` akan memicu compiler error `CE10123`.
 - **[2026-06-20]** Untuk membuat visualisasi terpadu backend Python dan frontend React, gunakan FastAPI dengan CORS middleware aktif, simulasikan data timeseries ApexCharts dengan penonaktifan animasi agar INP responsif, serta sematkan TradingView iframe widget menggunakan element DOM dinamis.
+
+## Design Context (from PRODUCT.md)
+
+- **Register**: `product` (Interactive parameter optimization & backtest dashboard)
+- **Brand Personality**: High-End Corporate Dark Mode (Charcoal background, neon cyan/teal accents, bold Switzer & Geist Mono typography)
+- **Key Principles**: Utilitarian density & stacked charts, monospace numeric alignment, flat & layered (no drop shadows/glassmorphism), restrained accent color usage (≤ 10%).
+- **Anti-references**: Cyberpunk glow excess, warm "SaaS-cream" palettes, nested card grids, all-caps eyebrows on every section.
+

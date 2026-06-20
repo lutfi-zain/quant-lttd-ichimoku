@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-20T19:52:00Z",
+  "title": "Design System: Ichimoku Quant Dashboard",
+  "extensions": {
+    "colorMeta": {
+      "bg-deep": {
+        "role": "neutral",
+        "displayName": "Deep Background",
+        "canonical": "oklch(12% 0.005 240)",
+        "tonalRamp": ["#050606", "#0c0d0e", "#151617", "#1f2022", "#2e3034", "#404247", "#5c5f66", "#8a8f99"]
+      },
+      "bg-surface": {
+        "role": "neutral",
+        "displayName": "Surface Card",
+        "canonical": "oklch(16% 0.006 240)",
+        "tonalRamp": ["#08090a", "#151617", "#1e1f21", "#28292d", "#383b40", "#4c5057", "#6a707a", "#9aa1ae"]
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "Neon Cyan",
+        "canonical": "oklch(85% 0.25 195)",
+        "tonalRamp": ["#00333b", "#004e5a", "#006b7b", "#008a9d", "#00abc3", "#00cdec", "#00f0ff", "#66f6ff"]
+      },
+      "success": {
+        "role": "success",
+        "displayName": "Desaturated Green",
+        "canonical": "oklch(80% 0.15 150)",
+        "tonalRamp": ["#0a2f1d", "#10472e", "#186040", "#227b53", "#2e9768", "#3eb37e", "#34d399", "#7af1c5"]
+      },
+      "danger": {
+        "role": "danger",
+        "displayName": "Desaturated Red",
+        "canonical": "oklch(65% 0.16 20)",
+        "tonalRamp": ["#3b0c0c", "#5a1515", "#7a1f1f", "#9d2c2c", "#c03c3c", "#e05252", "#f87171", "#faa4a4"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display switzer",
+        "purpose": "Principal headers and critical performance metrics."
+      },
+      "body": {
+        "displayName": "Body Switzer",
+        "purpose": "General interface text, parameter descriptions."
+      },
+      "mono": {
+        "displayName": "Geist Mono",
+        "purpose": "Trade logs, numeric values, timestamps, and parameters."
+      }
+    },
+    "shadows": [
+      {
+        "name": "none",
+        "value": "none",
+        "purpose": "Strictly flat elevation with no ambient shadows."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Default easing for interactive state changes."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Primary action button on parameters panel and dialogs.",
+      "html": "<button class=\"ds-btn-primary\">RUN BACKTEST</button>",
+      "css": ".ds-btn-primary { background: #eceefe; color: #151617; font-family: 'Switzer', sans-serif; font-size: 14px; font-weight: 500; border: none; border-radius: 4px; padding: 12px 24px; cursor: pointer; transition: background-color 0.2s, color 0.2s; } .ds-btn-primary:hover { background-color: #00f0ff; color: #0c0d0e; }"
+    },
+    {
+      "name": "Sidebar Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Flat bento grid container for settings and metrics panels.",
+      "html": "<div class=\"ds-card\"><h3 class=\"ds-card-title\">Strategy Parameters</h3><p class=\"ds-card-desc\">Adjust model parameters and gates.</p></div>",
+      "css": ".ds-card { background: #151617; border: 1px solid #242528; border-radius: 8px; padding: 24px; } .ds-card-title { font-family: 'Switzer', sans-serif; font-size: 18px; font-weight: 500; color: #eceefe; margin: 0 0 8px 0; } .ds-card-desc { font-family: 'Switzer', sans-serif; font-size: 13px; color: #6b7280; margin: 0; }"
+    },
+    {
+      "name": "Toggle Button Group",
+      "kind": "custom",
+      "refersTo": "toggle-option",
+      "description": "Segmented control for toggling between linear and logarithmic chart scales.",
+      "html": "<div class=\"ds-toggle-group\"><button class=\"ds-toggle-btn active\">LIN</button><button class=\"ds-toggle-btn\">LOG</button></div>",
+      "css": ".ds-toggle-group { display: inline-flex; border: 1px solid #242528; border-radius: 4px; overflow: hidden; background: #151617; } .ds-toggle-btn { background: transparent; border: none; font-family: 'Geist Mono', monospace; font-size: 10px; font-weight: 500; padding: 4px 8px; cursor: pointer; color: #6b7280; } .ds-toggle-btn.active { background: #00f0ff; color: #0c0d0e; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Obsidian Ledger",
+    "overview": "A sleek, dark, data-dense financial command center. The visual system prioritizes extreme contrast, structural flat layout alignment, and vibrant data-indicative accents (neon cyan and desaturated signal badging). The design is calibrated to convey institutional precision and analytical authority.",
+    "keyCharacteristics": [
+      "High-Density Data: Information layout uses flat grids and compact borders instead of generous white-space padding.",
+      "Deep Monochromatic Surface: Built on absolute dark tones (#0c0d0e and #151617) to keep visual focus entirely on technical charts and metrics.",
+      "Utilitarian Details: Technical readouts, legends, and status indicators are rendered in sharp monospace text."
+    ],
+    "rules": [
+      {
+        "name": "The Accent Rarity Rule",
+        "body": "The neon cyan accent (#00f0ff) is strictly reserved for current state highlights and primary target buttons. It is never used for general decorations, large layout lines, or non-interactive headings.",
+        "section": "colors"
+      },
+      {
+        "name": "The Monospace Numeric Rule",
+        "body": "Every numeric table cell, chart coordinate, and trade parameter must use Geist Mono to prevent character-width shift and ensure precise vertical alignment.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Surfaces are flat at rest. Drop shadows and glassmorphic blurs are prohibited. Hierarchy is communicated exclusively by the border boundaries and background value contrast.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do align the three charts (BTC Price, Oscillator, and Cumulative Equity Growth) vertically with only a 1px separator border between them.",
+      "Do format all tabular numbers, trading percentages, dates, and metric readouts in Geist Mono.",
+      "Do maintain a strict 4.5:1 contrast ratio for all secondary and placeholder labels."
+    ],
+    "donts": [
+      "Don't use ambient drop shadows or decorative glassmorphism blurs.",
+      "Don't add side-stripe accent borders to the bento cards or log cards.",
+      "Don't use saturated background colors for status badges (always use low-saturation pale alerts).",
+      "Don't use tiny uppercase tracked eyebrows above sections as general scaffolding."
+    ]
+  }
+}

@@ -3,7 +3,7 @@ import yfinance as yf
 import pandas as pd
 import os
 
-def fetch_btc_data(start_date: str = '2016-01-01') -> pd.DataFrame:
+def fetch_btc_data(start_date: str = '2018-01-01') -> pd.DataFrame:
     """
     Fetches daily OHLC price data for BTC-USD from Yahoo Finance.
     Caches the data to tmp/btc_cache.csv to prevent API rate limits.

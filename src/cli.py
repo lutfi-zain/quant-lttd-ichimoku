@@ -6,7 +6,7 @@ from ichimoku_quant.visuals import generate_dashboard_html
 def main():
     parser = argparse.ArgumentParser(description="Ichimoku Quant Trading System")
     parser.add_argument("action", choices=["backtest", "dashboard"], help="Action to perform")
-    parser.add_argument("--start", default="2016-01-01", help="Start date (YYYY-MM-DD)")
+    parser.add_argument("--start", default="2018-01-01", help="Start date (YYYY-MM-DD)")
     parser.add_argument("--tc", type=float, default=0.001, help="Transaction cost per trade")
     
     args = parser.parse_args()

@@ -23,7 +23,7 @@
   
   --color-text-primary: #111111;
   --color-text-secondary: #2F3437;
-  --color-text-muted: #787774;
+  --color-text-muted: #585e68;
   
   --badge-success-bg: #EDF3EC;
   --badge-success-text: #346538;
@@ -36,6 +36,8 @@
   
   --accent-button-bg: #111111;
   --accent-button-text: #ffffff;
+  --accent-button-hover-bg: #333333;
+  --accent-button-hover-text: #ffffff;
 }
 
 /* Dark Theme Variables */
@@ -48,7 +50,7 @@
   
   --color-text-primary: #ECEEFE;
   --color-text-secondary: #C7C9D3;
-  --color-text-muted: #6B7280;
+  --color-text-muted: #9ca3af;
 
   --badge-success-bg: rgba(16, 185, 129, 0.12);
   --badge-success-text: #34d399;
@@ -61,6 +63,8 @@
 
   --accent-button-bg: #ECEEFE;
   --accent-button-text: #151617;
+  --accent-button-hover-bg: #00f0ff;
+  --accent-button-hover-text: #0c0d0e;
 }
 
 body {
@@ -411,12 +415,12 @@ body {
 
 .btn-primary {
   width: 100%;
-  background: #111111;
-  color: #ffffff;
+  background: var(--accent-button-bg);
+  color: var(--accent-button-text);
   font-family: var(--font-sans);
   font-weight: 500;
   font-size: 14px;
-  border: none;
+  border: 1px solid var(--border-muted);
   border-radius: 4px;
   padding: 12px;
   cursor: pointer;
@@ -425,11 +429,12 @@ body {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: background-color 0.2s, transform 0.1s;
+  transition: background-color 0.2s, color 0.2s, transform 0.1s;
 }
 
 .btn-primary:hover {
-  background-color: #333333;
+  background-color: var(--accent-button-hover-bg);
+  color: var(--accent-button-hover-text);
 }
 
 .btn-primary:active {
@@ -569,8 +574,8 @@ body {
 }
 
 .toggle-option-btn.active {
-  background: #111111;
-  color: #ffffff;
+  background: var(--accent-button-bg);
+  color: var(--accent-button-text);
 }
 
 /* Legend Styling for Charts */
@@ -705,3 +710,38 @@ body {
   display: flex !important;
   flex-direction: column !important;
 }
+
+/* Touch Hit Target Expanders (WCAG 2.5.5) */
+.icon-btn-toggle,
+.toggle-option-btn,
+.theme-option-btn {
+  position: relative;
+}
+
+.icon-btn-toggle::after {
+  content: '';
+  position: absolute;
+  top: -8px;
+  bottom: -8px;
+  left: -8px;
+  right: -8px;
+}
+
+.toggle-option-btn::after {
+  content: '';
+  position: absolute;
+  top: -12px;
+  bottom: -12px;
+  left: -8px;
+  right: -8px;
+}
+
+.theme-option-btn::after {
+  content: '';
+  position: absolute;
+  top: -10px;
+  bottom: -10px;
+  left: -6px;
+  right: -6px;
+}
+

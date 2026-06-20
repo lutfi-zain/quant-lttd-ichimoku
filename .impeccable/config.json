@@ -1,0 +1,16 @@
+{
+  "detector": {
+    "ignoreRules": [
+      "overused-font"
+    ],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "instrument serif",
+        "reason": "Instrument Serif is the dedicated brand serif font for Ichimoku Quant",
+        "createdAt": "2026-06-20T13:04:46.969Z"
+      }
+    ]
+  }
+}

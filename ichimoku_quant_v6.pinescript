@@ -38,6 +38,16 @@ f_supersmoother(float src, int len) =>
     filt := na(filt[1]) ? src : c1 * (src + nz(src[1], src)) / 2.0 + c2 * nz(filt[1]) + c3 * nz(filt[2])
     filt
 
+// Hyperbolic Tangent (tanh) Approximation to prevent math.tanh missing compile error
+f_tanh(float x) =>
+    if x > 15.0
+        1.0
+    else if x < -15.0
+        -1.0
+    else
+        float e = math.exp(2.0 * x)
+        (e - 1.0) / (e + 1.0)
+
 // Shannon Entropy (Rolling Returns Randomness Filter)
 f_shannon_entropy(float src, int window, int bins) =>
     float ret = nz(ta.change(src) / src[1], 0.0)
@@ -83,7 +93,7 @@ float senkou_span_a = senkou_span_a_raw[p2]
 float senkou_span_b = senkou_span_b_raw[p2]
 
 // Component 1: Tenkan-Kijun Cross (Normalized)
-float S_TK = math.tanh((tenkan_sen - kijun_sen) / atr)
+float S_TK = f_tanh((tenkan_sen - kijun_sen) / atr)
 
 // Component 2: Close relative to Cloud (Normalized)
 float cloud_max = math.max(senkou_span_a, senkou_span_b)
@@ -93,14 +103,14 @@ if close > cloud_max
     dist_cloud := (close - cloud_max) / atr
 else if close < cloud_min
     dist_cloud := (close - cloud_min) / atr
-float S_Cloud = math.tanh(dist_cloud)
+float S_Cloud = f_tanh(dist_cloud)
 
 // Component 3: Future Cloud Bias (Normalized)
-float S_Future = math.tanh((senkou_span_a_raw - senkou_span_b_raw) / atr)
+float S_Future = f_tanh((senkou_span_a_raw - senkou_span_b_raw) / atr)
 
 // Component 4: Chikou Span Momentum (Normalized & Smoothed)
 float raw_chikou_dist = (close - nz(close[p2], close)) / atr
-float S_Chikou = math.tanh(f_supersmoother(raw_chikou_dist, 4))
+float S_Chikou = f_tanh(f_supersmoother(raw_chikou_dist, 4))
 
 // Composite Ichimoku Momentum Oscillator (IMO)
 float imo_raw = (S_TK + S_Cloud + S_Future + S_Chikou) / 4.0
@@ -230,20 +240,20 @@ plotshape(pos == 0.0 and nz(pos[1], 0.0) == 1.0, title="Sell Signal", style=shap
 // ==========================================
 var table info_table = table.new(position.top_right, 2, 6, bgcolor=color.new(color.black, 20), border_color=color.gray, border_width=1)
 if barstate.islast
-    table.set_cell_text(info_table, 0, 0, "Indicator", text_color=color.white, bgcolor=color.new(color.blue, 50))
-    table.set_cell_text(info_table, 1, 0, "Value", text_color=color.white, bgcolor=color.new(color.blue, 50))
+    table.cell(info_table, 0, 0, "Indicator", text_color=color.white, bgcolor=color.new(color.blue, 50))
+    table.cell(info_table, 1, 0, "Value", text_color=color.white, bgcolor=color.new(color.blue, 50))
     
-    table.set_cell_text(info_table, 0, 1, "IMO (Smoothed)", text_color=color.white)
-    table.set_cell_text(info_table, 1, 1, str.tostring(IMO, "#.####"), text_color=IMO >= 0 ? color.green : color.red)
+    table.cell(info_table, 0, 1, "IMO (Smoothed)", text_color=color.white)
+    table.cell(info_table, 1, 1, str.tostring(IMO, "#.####"), text_color=IMO >= 0 ? color.green : color.red)
     
-    table.set_cell_text(info_table, 0, 2, "S_Chikou (Denoised)", text_color=color.white)
-    table.set_cell_text(info_table, 1, 2, str.tostring(S_Chikou, "#.####"), text_color=S_Chikou >= CHIKOU_THRESH ? color.green : color.red)
+    table.cell(info_table, 0, 2, "S_Chikou (Denoised)", text_color=color.white)
+    table.cell(info_table, 1, 2, str.tostring(S_Chikou, "#.####"), text_color=S_Chikou >= CHIKOU_THRESH ? color.green : color.red)
     
-    table.set_cell_text(info_table, 0, 3, "Efficiency Ratio (ER)", text_color=color.white)
-    table.set_cell_text(info_table, 1, 3, str.tostring(ER, "#.####"), text_color=color.yellow)
+    table.cell(info_table, 0, 3, "Efficiency Ratio (ER)", text_color=color.white)
+    table.cell(info_table, 1, 3, str.tostring(ER, "#.####"), text_color=color.yellow)
     
-    table.set_cell_text(info_table, 0, 4, "Shannon Entropy", text_color=color.white)
-    table.set_cell_text(info_table, 1, 4, str.tostring(Entropy, "#.####"), text_color=Entropy < ENTROPY_THRESH ? color.green : color.orange)
+    table.cell(info_table, 0, 4, "Shannon Entropy", text_color=color.white)
+    table.cell(info_table, 1, 4, str.tostring(Entropy, "#.####"), text_color=Entropy < ENTROPY_THRESH ? color.green : color.orange)
     
-    table.set_cell_text(info_table, 0, 5, "System Position", text_color=color.white)
-    table.set_cell_text(info_table, 1, 5, pos == 1.0 ? "LONG" : "FLAT", text_color=pos == 1.0 ? color.green : color.gray)
+    table.cell(info_table, 0, 5, "System Position", text_color=color.white)
+    table.cell(info_table, 1, 5, pos == 1.0 ? "LONG" : "FLAT", text_color=pos == 1.0 ? color.green : color.gray)

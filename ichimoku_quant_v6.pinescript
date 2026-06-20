@@ -1,5 +1,5 @@
 // @version=6
-strategy("Ichimoku Quant Denoised Strategy v6", overlay=true, initial_capital=10000, default_qty_type=strategy.percent_of_equity, default_qty_value=100, commission_type=strategy.commission.percent, commission_value=0.1)
+strategy("Ichimoku Quant Denoised Strategy v6", overlay=true, initial_capital=10000, default_qty_type=strategy.percent_of_equity, default_qty_value=100, commission_type=strategy.commission.percent, commission_value=0.1, process_orders_on_close=true)
 
 // ==========================================
 // === INPUT PARAMETERS ===

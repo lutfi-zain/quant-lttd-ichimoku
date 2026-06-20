@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Chart from 'react-apexcharts';
 import { createChart, LineStyle, CandlestickSeries, LineSeries, createSeriesMarkers, PriceScaleMode } from 'lightweight-charts';
+
 
 // --- CUSTOM BESPOKE INLINE SVG PRIMITIVES ---
 const IconSettings = () => (
@@ -111,7 +111,8 @@ function App() {
   // TradingView Lightweight Charts DOM refs
   const priceChartRef = useRef(null);
   const oscChartRef = useRef(null);
-  const chartsRef = useRef({ priceChart: null, oscChart: null });
+  const equityChartRef = useRef(null);
+  const chartsRef = useRef({ priceChart: null, oscChart: null, equityChart: null });
 
   // Load status and run initial backtest
   useEffect(() => {
@@ -121,11 +122,12 @@ function App() {
 
   // Build TradingView Lightweight Charts
   useEffect(() => {
-    if (timeseries.length === 0 || !priceChartRef.current || !oscChartRef.current) return;
+    if (timeseries.length === 0 || !priceChartRef.current || !oscChartRef.current || !equityChartRef.current) return;
 
     // 1. Clean containers
     priceChartRef.current.innerHTML = '';
     oscChartRef.current.innerHTML = '';
+    equityChartRef.current.innerHTML = '';
 
     const width = priceChartRef.current.clientWidth;
     const isDark = activeTheme === 'dark';
@@ -174,13 +176,26 @@ function App() {
       minimumWidth: 80
     });
 
-    // 3. Create Oscillator Chart (Lower Pane)
+    // 3. Create Oscillator Chart (Middle Pane)
     const oscChart = createChart(oscChartRef.current, {
       ...chartOptions,
-      height: 220
+      height: 220,
+      timeScale: {
+        ...chartOptions.timeScale,
+        visible: false // Hide time axis on oscillator chart to save vertical space
+      }
     });
 
-    chartsRef.current = { priceChart, oscChart };
+    // 4. Create Cumulative Equity Growth Chart (Lower Pane)
+    const equityChart = createChart(equityChartRef.current, {
+      ...chartOptions,
+      height: 250,
+      localization: {
+        priceFormatter: price => `${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`
+      }
+    });
+
+    chartsRef.current = { priceChart, oscChart, equityChart };
 
     // --- POPULATE PRICE CHART ---
     // Candlestick Series using desaturated pastels
@@ -309,13 +324,30 @@ function App() {
       title: 'Chikou Exit'
     });
 
+    // --- POPULATE CUMULATIVE EQUITY GROWTH CHART ---
+    const stratSeries = equityChart.addSeries(LineSeries, {
+      color: isDark ? '#00f0ff' : '#111111',
+      lineWidth: 2,
+      title: 'Strategy (Net)'
+    });
+
+    const marketSeries = equityChart.addSeries(LineSeries, {
+      color: '#888888',
+      lineWidth: 1.5,
+      title: 'BTC Buy & Hold'
+    });
+
+    stratSeries.setData(timeseries.map(d => ({ time: d.Date, value: d.Cum_Strat !== null ? parseFloat((d.Cum_Strat * 100).toFixed(2)) : null })).filter(d => d.value !== null));
+    marketSeries.setData(timeseries.map(d => ({ time: d.Date, value: d.Cum_Market !== null ? parseFloat((d.Cum_Market * 100).toFixed(2)) : null })).filter(d => d.value !== null));
+
     // --- SINKRONISASI VISIBLE LOGICAL RANGE (ZOOM / SCROLL) ---
     let isSyncing = false;
-    
+
     priceChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
       if (isSyncing) return;
       isSyncing = true;
       oscChart.timeScale().setVisibleLogicalRange(range);
+      equityChart.timeScale().setVisibleLogicalRange(range);
       isSyncing = false;
     });
 
@@ -323,6 +355,15 @@ function App() {
       if (isSyncing) return;
       isSyncing = true;
       priceChart.timeScale().setVisibleLogicalRange(range);
+      equityChart.timeScale().setVisibleLogicalRange(range);
+      isSyncing = false;
+    });
+
+    equityChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+      if (isSyncing) return;
+      isSyncing = true;
+      priceChart.timeScale().setVisibleLogicalRange(range);
+      oscChart.timeScale().setVisibleLogicalRange(range);
       isSyncing = false;
     });
 
@@ -332,8 +373,10 @@ function App() {
       isSyncing = true;
       if (param && param.time) {
         oscChart.setCrosshairPosition(param.time);
+        equityChart.setCrosshairPosition(param.time);
       } else {
         oscChart.clearCrosshairPosition();
+        equityChart.clearCrosshairPosition();
       }
       isSyncing = false;
     });
@@ -343,8 +386,23 @@ function App() {
       isSyncing = true;
       if (param && param.time) {
         priceChart.setCrosshairPosition(param.time);
+        equityChart.setCrosshairPosition(param.time);
       } else {
         priceChart.clearCrosshairPosition();
+        equityChart.clearCrosshairPosition();
+      }
+      isSyncing = false;
+    });
+
+    equityChart.subscribeCrosshairMove(param => {
+      if (isSyncing) return;
+      isSyncing = true;
+      if (param && param.time) {
+        priceChart.setCrosshairPosition(param.time);
+        oscChart.setCrosshairPosition(param.time);
+      } else {
+        priceChart.clearCrosshairPosition();
+        oscChart.clearCrosshairPosition();
       }
       isSyncing = false;
     });
@@ -358,6 +416,7 @@ function App() {
       const { width: newWidth } = entries[0].contentRect;
       priceChart.resize(newWidth, 380);
       oscChart.resize(newWidth, 220);
+      equityChart.resize(newWidth, 250);
     });
 
     resizeObserver.observe(priceChartRef.current);
@@ -366,6 +425,7 @@ function App() {
       resizeObserver.disconnect();
       priceChart.remove();
       oscChart.remove();
+      equityChart.remove();
     };
   }, [timeseries, params.entropy_thresh, params.chikou_thresh, params.t_entry, isLogScale, activeTheme]);
 
@@ -436,47 +496,6 @@ function App() {
     }
   }
 
-  // Prepare ApexCharts Equity data (Light Theme)
-  const categories = timeseries.map(d => d.Date);
-  const equitySeries = [
-    {
-      name: 'Strategy (Net)',
-      data: timeseries.map(d => d.Cum_Strat !== null ? parseFloat((d.Cum_Strat * 100).toFixed(2)) : null)
-    },
-    {
-      name: 'BTC Buy & Hold',
-      data: timeseries.map(d => d.Cum_Market !== null ? parseFloat((d.Cum_Market * 100).toFixed(2)) : null)
-    }
-  ];
-
-  const equityChartOptions = {
-    chart: {
-      id: 'equity-curve',
-      animations: { enabled: false },
-      background: 'transparent',
-      toolbar: { show: false }
-    },
-    theme: { mode: activeTheme },
-    colors: [activeTheme === 'dark' ? '#00f0ff' : '#111111', '#888888'],
-    stroke: { curve: 'straight', width: 2 },
-    xaxis: {
-      type: 'datetime',
-      categories: categories,
-      labels: { style: { colors: activeTheme === 'dark' ? '#c7c9d3' : '#2f3437', fontFamily: 'Geist Mono, monospace' } },
-      axisBorder: { show: false },
-      axisTicks: { show: false }
-    },
-    yaxis: {
-      title: { text: 'Cumulative Return (%)', style: { color: activeTheme === 'dark' ? '#c7c9d3' : '#2f3437', fontFamily: 'Switzer, sans-serif' } },
-      labels: { 
-        style: { colors: activeTheme === 'dark' ? '#c7c9d3' : '#2f3437', fontFamily: 'Geist Mono, monospace' },
-        formatter: (val) => `${val.toLocaleString()}%`
-      }
-    },
-    grid: { borderColor: activeTheme === 'dark' ? '#242528' : '#eaeaea', strokeDashArray: 4 },
-    tooltip: { x: { format: 'dd MMM yyyy' } },
-    legend: { labels: { colors: activeTheme === 'dark' ? '#eceefe' : '#111111' } }
-  };
 
   return (
     <div className="app-container">
@@ -751,18 +770,19 @@ function App() {
               <div className="metric-card">
                 <div className="metric-label">Sharpe Ratio</div>
                 <div className="metric-value text-success">
-                  {metrics['Sharpe Ratio'].toFixed(2)}
+              {metrics['Sharpe Ratio'].toFixed(2)}
                 </div>
                 <div className="metric-sub">Market: {metrics['Market Sharpe Ratio'].toFixed(2)}</div>
               </div>
             </div>
           )}
 
-          {/* Synchronized TradingView Lightweight Charts (Log/Lin Scale Toggle + Aligned Y Axis) */}
+          {/* BTC/USD Price Action & Ichimoku Clouds Chart */}
           <div className="chart-container">
             <h3 className="section-title">
               <div className="section-title-left">
-                <span>TradingView Chart Lite (BTC Daily & Denoising Indicators)</span>
+                <IconTrending />
+                <span>BTC/USD Price Action & Ichimoku Clouds</span>
               </div>
               
               {/* Log/Lin Toggle Button */}
@@ -813,9 +833,16 @@ function App() {
                 style={{ width: '100%', height: '380px' }}
               />
             </div>
+          </div>
 
-            {/* Gap separator line */}
-            <div style={{ height: '1px', background: 'var(--border-muted)' }} />
+          {/* Denoising Indicators & Complexity Gates Chart */}
+          <div className="chart-container">
+            <h3 className="section-title">
+              <div className="section-title-left">
+                <IconSettings />
+                <span>Denoising Gates & Entropy Oscillator</span>
+              </div>
+            </h3>
 
             {/* Legend for Oscillators */}
             <div className="chart-legend-box">
@@ -846,21 +873,33 @@ function App() {
             </div>
           </div>
 
-          {/* Interactive ApexCharts for Equity comparison */}
+          {/* Cumulative Equity Growth Chart */}
           {timeseries.length > 0 && (
             <div className="chart-container">
-              <div>
-                <h3 className="section-title" style={{ marginBottom: '16px' }}>
-                  <div className="section-title-left">
-                    <IconTrending />
-                    <span>Cumulative Equity Growth</span>
-                  </div>
-                </h3>
-                <Chart 
-                  options={equityChartOptions} 
-                  series={equitySeries} 
-                  type="line" 
-                  height={300} 
+              <h3 className="section-title">
+                <div className="section-title-left">
+                  <IconTrending />
+                  <span>Cumulative Equity Growth</span>
+                </div>
+              </h3>
+
+              {/* Legend for Equity Series */}
+              <div className="chart-legend-box">
+                <div className="chart-legend-item">
+                  <span className="legend-color-dot" style={{ backgroundColor: activeTheme === 'dark' ? '#00f0ff' : '#111111' }}></span>
+                  <span>Strategy (Net)</span>
+                </div>
+                <div className="chart-legend-item">
+                  <span className="legend-color-dot" style={{ backgroundColor: '#888888' }}></span>
+                  <span>BTC Buy & Hold</span>
+                </div>
+              </div>
+
+              {/* Equity Chart Pane */}
+              <div style={{ position: 'relative' }}>
+                <div 
+                  ref={equityChartRef} 
+                  style={{ width: '100%', height: '250px' }}
                 />
               </div>
             </div>

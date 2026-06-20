@@ -256,6 +256,8 @@ plot(IMO, color=color.orange, linewidth=2, title="IMO")
 plot(threshold, color=color.gray, style=plot.style_line, title="Entry Threshold")
 plot(CHIKOU_THRESH, color=color.new(color.red, 50), style=plot.style_line, title="Chikou Exit Threshold")
 plot(IMMUNITY_THRESH, color=color.new(color.green, 50), style=plot.style_line, title="Immunity Threshold")
+plot(Entropy, color=color.new(color.purple, 30), linewidth=1, title="Shannon Entropy")
+plot(ENTROPY_THRESH, color=color.new(color.red, 70), style=plot.style_dashed, title="Entropy Threshold")
 hline(0.0, color=color.new(color.gray, 70), linestyle=hline.style_dotted, title="Zero Line")
 
 // ==========================================

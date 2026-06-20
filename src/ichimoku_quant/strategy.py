@@ -22,7 +22,18 @@ IMO_MIN_LIMIT = -0.30      # Maintain exit immunity above cloud if IMO >= this
 IMO_EXIT_BULL = -0.30      # Lower macro exit threshold above cloud
 ROC_GATE_LIMIT = -0.20     # Disable immunity if 30d ROC is below this (crash gate)
 
-def generate_signals(df: pd.DataFrame) -> pd.DataFrame:
+def generate_signals(df: pd.DataFrame,
+                     confirm_entry=2,
+                     confirm_exit=1,
+                     min_hold_days=10,
+                     er_entry=0.25,
+                     t_entry=0.40,
+                     chikou_thresh=-0.30,
+                     immunity_thresh=0.50,
+                     entropy_thresh=2.271,
+                     imo_min_limit=-0.30,
+                     imo_exit_bull=-0.30,
+                     roc_gate_limit=-0.20) -> pd.DataFrame:
     """
     Clean binary denoised signal generator.
 
@@ -64,14 +75,14 @@ def generate_signals(df: pd.DataFrame) -> pd.DataFrame:
             regimes.append('Neutral' if pos == 0 else 'Positioned')
             continue
 
-        threshold = std * T_ENTRY
+        threshold = std * t_entry
 
         if pos > 0:
             hold_days += 1
         else:
             hold_days = 0
 
-        can_exit = hold_days >= MIN_HOLD_DAYS
+        can_exit = hold_days >= min_hold_days
 
         if pos == 0.0:
             # ENTRY: requires IMO above adaptive threshold AND sufficient ER AND low entropy
@@ -81,13 +92,13 @@ def generate_signals(df: pd.DataFrame) -> pd.DataFrame:
             if not pd.isna(cloud_min):
                 gate_pass = (close >= cloud_min)
 
-            if imo > threshold and er > ER_ENTRY and entropy < ENTROPY_THRESH and gate_pass:
+            if imo > threshold and er > er_entry and entropy < entropy_thresh and gate_pass:
                 if intent != 1.0:
                     intent = 1.0
                     confirm_count = 1
                 else:
                     confirm_count += 1
-                if confirm_count >= CONFIRM_ENTRY:
+                if confirm_count >= confirm_entry:
                     pos = 1.0
                     confirm_count = 0
                     hold_days = 0
@@ -105,19 +116,19 @@ def generate_signals(df: pd.DataFrame) -> pd.DataFrame:
                 
                 # Check crash gate
                 roc_gate = row.get('roc_gate', 0.0)
-                is_not_crashing = (roc_gate >= ROC_GATE_LIMIT)
+                is_not_crashing = (roc_gate >= roc_gate_limit)
                 
                 # Dynamic immunity
-                is_immune = (imo >= IMMUNITY_THRESH)
+                is_immune = (imo >= immunity_thresh)
                 if is_above_cloud and is_not_crashing:
-                    is_immune = is_immune or (imo >= IMO_MIN_LIMIT)
+                    is_immune = is_immune or (imo >= imo_min_limit)
                 
                 # Dynamic macro exit threshold
                 current_macro_exit_th = 0.0
                 if is_above_cloud and is_not_crashing:
-                    current_macro_exit_th = IMO_EXIT_BULL
+                    current_macro_exit_th = imo_exit_bull
                 
-                if chikou < CHIKOU_THRESH and not is_immune:
+                if chikou < chikou_thresh and not is_immune:
                     exit_signal = True
                 elif imo < current_macro_exit_th:
                     exit_signal = True
@@ -128,7 +139,7 @@ def generate_signals(df: pd.DataFrame) -> pd.DataFrame:
                     confirm_count = 1
                 else:
                     confirm_count += 1
-                if confirm_count >= CONFIRM_EXIT:
+                if confirm_count >= confirm_exit:
                     pos = 0.0
                     confirm_count = 0
                     hold_days = 0

@@ -163,7 +163,7 @@ function App() {
     // 2. Create Price Chart (Upper Pane)
     const priceChart = createChart(priceChartRef.current, {
       ...chartOptions,
-      height: 380,
+      height: 350,
       timeScale: {
         ...chartOptions.timeScale,
         visible: false // Hide time axis on price chart to save vertical space
@@ -179,7 +179,7 @@ function App() {
     // 3. Create Oscillator Chart (Middle Pane)
     const oscChart = createChart(oscChartRef.current, {
       ...chartOptions,
-      height: 220,
+      height: 200,
       timeScale: {
         ...chartOptions.timeScale,
         visible: false // Hide time axis on oscillator chart to save vertical space
@@ -189,7 +189,7 @@ function App() {
     // 4. Create Cumulative Equity Growth Chart (Lower Pane)
     const equityChart = createChart(equityChartRef.current, {
       ...chartOptions,
-      height: 250,
+      height: 220,
       localization: {
         priceFormatter: price => `${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`
       }
@@ -435,9 +435,9 @@ function App() {
     const resizeObserver = new ResizeObserver(entries => {
       if (entries.length === 0) return;
       const { width: newWidth } = entries[0].contentRect;
-      priceChart.resize(newWidth, 380);
-      oscChart.resize(newWidth, 220);
-      equityChart.resize(newWidth, 250);
+      priceChart.resize(newWidth, 350);
+      oscChart.resize(newWidth, 200);
+      equityChart.resize(newWidth, 220);
     });
 
     resizeObserver.observe(priceChartRef.current);
@@ -798,107 +798,114 @@ function App() {
             </div>
           )}
 
-          {/* BTC/USD Price Action & Ichimoku Clouds Chart */}
-          <div className="chart-container">
-            <h3 className="section-title">
-              <div className="section-title-left">
-                <IconTrending />
-                <span>BTC/USD Price Action & Ichimoku Clouds</span>
+          {/* Multi-Pane Synchronized Charting Suite (Sticked Layout) */}
+          <div className="chart-container" style={{ display: 'flex', flexDirection: 'column', gap: '0px' }}>
+            {/* 1. BTC/USD Price Action & Ichimoku Clouds */}
+            <div style={{ paddingBottom: '16px' }}>
+              <h3 className="section-title">
+                <div className="section-title-left">
+                  <IconTrending />
+                  <span>BTC/USD Price Action & Ichimoku Clouds</span>
+                </div>
+                
+                {/* Log/Lin Toggle Button */}
+                <div className="toggle-btn-group">
+                  <button 
+                    onClick={() => setIsLogScale(false)} 
+                    className={`toggle-option-btn ${!isLogScale ? 'active' : ''}`}
+                  >
+                    LIN
+                  </button>
+                  <button 
+                    onClick={() => setIsLogScale(true)} 
+                    className={`toggle-option-btn ${isLogScale ? 'active' : ''}`}
+                  >
+                    LOG
+                  </button>
+                </div>
+              </h3>
+
+              {/* Legend indicators overlay */}
+              <div className="chart-legend-box" style={{ marginTop: '8px', marginBottom: '12px' }}>
+                <div className="chart-legend-item">
+                  <span className="legend-color-dot" style={{ backgroundColor: '#9f2f2d' }}></span>
+                  <span>Tenkan-sen</span>
+                </div>
+                <div className="chart-legend-item">
+                  <span className="legend-color-dot" style={{ backgroundColor: '#1f6c9f' }}></span>
+                  <span>Kijun-sen</span>
+                </div>
+                <div className="chart-legend-item">
+                  <span className="legend-color-dot" style={{ backgroundColor: 'rgba(52, 101, 56, 0.45)' }}></span>
+                  <span>Span A</span>
+                </div>
+                <div className="chart-legend-item">
+                  <span className="legend-color-dot" style={{ backgroundColor: 'rgba(159, 47, 45, 0.45)' }}></span>
+                  <span>Span B</span>
+                </div>
+                <div className="chart-legend-item">
+                  <span className="legend-color-dot" style={{ backgroundColor: 'rgba(107, 33, 168, 0.7)' }}></span>
+                  <span>Chikou Span (Lagged)</span>
+                </div>
               </div>
               
-              {/* Log/Lin Toggle Button */}
-              <div className="toggle-btn-group">
-                <button 
-                  onClick={() => setIsLogScale(false)} 
-                  className={`toggle-option-btn ${!isLogScale ? 'active' : ''}`}
-                >
-                  LIN
-                </button>
-                <button 
-                  onClick={() => setIsLogScale(true)} 
-                  className={`toggle-option-btn ${isLogScale ? 'active' : ''}`}
-                >
-                  LOG
-                </button>
-              </div>
-            </h3>
-
-            {/* Legend indicators overlay */}
-            <div className="chart-legend-box">
-              <div className="chart-legend-item">
-                <span className="legend-color-dot" style={{ backgroundColor: '#9f2f2d' }}></span>
-                <span>Tenkan-sen</span>
-              </div>
-              <div className="chart-legend-item">
-                <span className="legend-color-dot" style={{ backgroundColor: '#1f6c9f' }}></span>
-                <span>Kijun-sen</span>
-              </div>
-              <div className="chart-legend-item">
-                <span className="legend-color-dot" style={{ backgroundColor: 'rgba(52, 101, 56, 0.45)' }}></span>
-                <span>Span A</span>
-              </div>
-              <div className="chart-legend-item">
-                <span className="legend-color-dot" style={{ backgroundColor: 'rgba(159, 47, 45, 0.45)' }}></span>
-                <span>Span B</span>
-              </div>
-              <div className="chart-legend-item">
-                <span className="legend-color-dot" style={{ backgroundColor: 'rgba(107, 33, 168, 0.7)' }}></span>
-                <span>Chikou Span (Lagged)</span>
-              </div>
-            </div>
-            
-            {/* Price Chart Pane */}
-            <div style={{ position: 'relative' }}>
-              <div 
-                ref={priceChartRef} 
-                style={{ width: '100%', height: '380px' }}
-              />
-            </div>
-          </div>
-
-          {/* Denoising Indicators & Complexity Gates Chart */}
-          <div className="chart-container">
-            <h3 className="section-title">
-              <div className="section-title-left">
-                <IconSettings />
-                <span>Denoising Gates & Entropy Oscillator</span>
-              </div>
-            </h3>
-
-            {/* Legend for Oscillators */}
-            <div className="chart-legend-box">
-              <div className="chart-legend-item">
-                <span className="legend-color-dot" style={{ backgroundColor: '#d97706' }}></span>
-                <span>IMO</span>
-              </div>
-              <div className="chart-legend-item">
-                <span className="legend-color-dot" style={{ backgroundColor: '#787774' }}></span>
-                <span>Threshold</span>
-              </div>
-              <div className="chart-legend-item">
-                <span className="legend-color-dot" style={{ backgroundColor: '#7c3aed' }}></span>
-                <span>Shannon Entropy</span>
-              </div>
-              <div className="chart-legend-item">
-                <span className="legend-color-dot" style={{ backgroundColor: '#0891b2' }}></span>
-                <span>S_Chikou</span>
+              {/* Price Chart Pane */}
+              <div style={{ position: 'relative' }}>
+                <div 
+                  ref={priceChartRef} 
+                  style={{ width: '100%', height: '350px' }}
+                />
               </div>
             </div>
 
-            {/* Oscillator Chart Pane */}
-            <div style={{ position: 'relative' }}>
-              <div 
-                ref={oscChartRef} 
-                style={{ width: '100%', height: '220px' }}
-              />
-            </div>
-          </div>
+            {/* Gap separator line */}
+            <div style={{ height: '1px', background: 'var(--border-muted)', margin: '0' }} />
 
-          {/* Cumulative Equity Growth & Completed Trades Log Card */}
-          {timeseries.length > 0 && (
-            <div className="chart-container">
-              <div>
-                <h3 className="section-title" style={{ marginBottom: '16px' }}>
+            {/* 2. Denoising Gates & Entropy Oscillator */}
+            <div style={{ paddingTop: '16px', paddingBottom: '16px' }}>
+              <h3 className="section-title">
+                <div className="section-title-left">
+                  <IconSettings />
+                  <span>Denoising Gates & Entropy Oscillator</span>
+                </div>
+              </h3>
+
+              {/* Legend for Oscillators */}
+              <div className="chart-legend-box" style={{ marginTop: '8px', marginBottom: '12px' }}>
+                <div className="chart-legend-item">
+                  <span className="legend-color-dot" style={{ backgroundColor: '#d97706' }}></span>
+                  <span>IMO</span>
+                </div>
+                <div className="chart-legend-item">
+                  <span className="legend-color-dot" style={{ backgroundColor: '#787774' }}></span>
+                  <span>Threshold</span>
+                </div>
+                <div className="chart-legend-item">
+                  <span className="legend-color-dot" style={{ backgroundColor: '#7c3aed' }}></span>
+                  <span>Shannon Entropy</span>
+                </div>
+                <div className="chart-legend-item">
+                  <span className="legend-color-dot" style={{ backgroundColor: '#0891b2' }}></span>
+                  <span>S_Chikou</span>
+                </div>
+              </div>
+
+              {/* Oscillator Chart Pane */}
+              <div style={{ position: 'relative' }}>
+                <div 
+                  ref={oscChartRef} 
+                  style={{ width: '100%', height: '200px' }}
+                />
+              </div>
+            </div>
+
+            {/* Gap separator line */}
+            <div style={{ height: '1px', background: 'var(--border-muted)', margin: '0' }} />
+
+            {/* 3. Cumulative Equity Growth */}
+            {timeseries.length > 0 && (
+              <div style={{ paddingTop: '16px' }}>
+                <h3 className="section-title">
                   <div className="section-title-left">
                     <IconTrending />
                     <span>Cumulative Equity Growth</span>
@@ -906,7 +913,7 @@ function App() {
                 </h3>
 
                 {/* Legend for Equity Series */}
-                <div className="chart-legend-box" style={{ marginBottom: '12px' }}>
+                <div className="chart-legend-box" style={{ marginTop: '8px', marginBottom: '12px' }}>
                   <div className="chart-legend-item">
                     <span className="legend-color-dot" style={{ backgroundColor: activeTheme === 'dark' ? '#00f0ff' : '#111111' }}></span>
                     <span>Strategy (Net)</span>
@@ -921,75 +928,72 @@ function App() {
                 <div style={{ position: 'relative' }}>
                   <div 
                     ref={equityChartRef} 
-                    style={{ width: '100%', height: '250px' }}
+                    style={{ width: '100%', height: '220px' }}
                   />
                 </div>
               </div>
+            )}
+          </div>
 
-              {/* Separator Line */}
-              <div style={{ height: '1px', background: 'var(--border-muted)', margin: '24px 0' }} />
-
-              {/* Historical Trades Log Table Section */}
-              <div>
-                <h3 className="section-title" style={{ marginBottom: '16px' }}>
-                  <div className="section-title-left">
-                    <IconDatabase />
-                    <span>Completed Trades Log</span>
-                  </div>
-                  {trades.length > 0 && (
-                    <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}>
-                      {trades.length} trades total
-                    </span>
-                  )}
-                </h3>
-
-                <div className="table-wrapper">
-                  <table className="trades-table">
-                    <thead>
-                      <tr>
-                        <th>ID</th>
-                        <th>Entry Date</th>
-                        <th>Entry Price</th>
-                        <th>Exit Date</th>
-                        <th>Exit Price</th>
-                        <th>Return (%)</th>
-                        <th>Hold Days</th>
-                        <th>Exit Reason</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {trades.length > 0 ? (
-                        trades.map(trade => (
-                          <tr key={trade.id}>
-                            <td>#{trade.id}</td>
-                            <td>{trade.entry_date}</td>
-                            <td>${trade.entry_price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                            <td>{trade.exit_date}</td>
-                            <td>${trade.exit_price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                            <td className={trade.return >= 0 ? "profit" : "loss"}>
-                              {trade.return >= 0 ? '+' : ''}{trade.return.toFixed(2)}%
-                            </td>
-                            <td>{trade.holding_days}d</td>
-                            <td>
-                              <span className={`m-badge ${trade.exit_reason.toLowerCase().includes('chikou') ? 'info' : 'warning'}`}>
-                                {trade.exit_reason}
-                              </span>
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={8} style={{ textAlign: 'center', padding: '24px', color: 'var(--color-text-muted)' }}>
-                            No trades completed within the backtest range.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+          {/* Standalone Historical Trades Log Table */}
+          <div className="table-card">
+            <h3 className="section-title" style={{ marginBottom: '20px' }}>
+              <div className="section-title-left">
+                <IconDatabase />
+                <span>Completed Trades Log</span>
               </div>
+              {trades.length > 0 && (
+                <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}>
+                  {trades.length} trades total
+                </span>
+              )}
+            </h3>
+
+            <div className="table-wrapper">
+              <table className="trades-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Entry Date</th>
+                    <th>Entry Price</th>
+                    <th>Exit Date</th>
+                    <th>Exit Price</th>
+                    <th>Return (%)</th>
+                    <th>Hold Days</th>
+                    <th>Exit Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {trades.length > 0 ? (
+                    trades.map(trade => (
+                      <tr key={trade.id}>
+                        <td>#{trade.id}</td>
+                        <td>{trade.entry_date}</td>
+                        <td>${trade.entry_price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        <td>{trade.exit_date}</td>
+                        <td>${trade.exit_price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        <td className={trade.return >= 0 ? "profit" : "loss"}>
+                          {trade.return >= 0 ? '+' : ''}{trade.return.toFixed(2)}%
+                        </td>
+                        <td>{trade.holding_days}d</td>
+                        <td>
+                          <span className={`m-badge ${trade.exit_reason.toLowerCase().includes('chikou') ? 'info' : 'warning'}`}>
+                            {trade.exit_reason}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={8} style={{ textAlign: 'center', padding: '24px', color: 'var(--color-text-muted)' }}>
+                        No trades completed within the backtest range.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
-          )}
+          </div>
         </main>
       </div>
     </div>

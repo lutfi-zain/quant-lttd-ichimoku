@@ -28,24 +28,10 @@ float ROC_GATE_LIMIT = input.float(-0.20, title="ROC Crash Gate Limit")
 // ==========================================
 // Safe Min/Max functions to prevent NaN propagation (matching Python np.nanmin/np.nanmax behavior)
 f_safe_min(float x, float y) =>
-    if na(x) and na(y)
-        na
-    else if na(x)
-        y
-    else if na(y)
-        x
-    else
-        math.min(x, y)
+    na(x) and na(y) ? na : na(x) ? y : na(y) ? x : math.min(x, y)
 
 f_safe_max(float x, float y) =>
-    if na(x) and na(y)
-        na
-    else if na(x)
-        y
-    else if na(y)
-        x
-    else
-        math.max(x, y)
+    na(x) and na(y) ? na : na(x) ? y : na(y) ? x : math.max(x, y)
 
 // Ehler's SuperSmoother Filter (Spectral Denoising) - Robust State Version
 f_supersmoother(float src, int len) =>
@@ -67,13 +53,7 @@ f_supersmoother(float src, int len) =>
 
 // Hyperbolic Tangent (tanh) Approximation to prevent math.tanh missing compile error
 f_tanh(float x) =>
-    if x > 15.0
-        1.0
-    else if x < -15.0
-        -1.0
-    else
-        float e = math.exp(2.0 * x)
-        (e - 1.0) / (e + 1.0)
+    x > 15.0 ? 1.0 : x < -15.0 ? -1.0 : (math.exp(2.0 * x) - 1.0) / (math.exp(2.0 * x) + 1.0)
 
 // Shannon Entropy (Complexity Filter) - Robust Version
 f_shannon_entropy(float ret_series, int window, int bins) =>

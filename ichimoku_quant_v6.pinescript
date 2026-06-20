@@ -1,0 +1,249 @@
+// @version=6
+strategy("Ichimoku Quant Denoised Strategy v6", overlay=true, initial_capital=10000, default_qty_type=strategy.percent_of_equity, default_qty_value=100, commission_type=strategy.commission.percent, commission_value=0.1)
+
+// ==========================================
+// === INPUT PARAMETERS ===
+// ==========================================
+// Ichimoku Periods
+int p1 = input.int(20, title="Tenkan Lookback (p1)")
+int p2 = input.int(60, title="Kijun Lookback (p2)")
+int p3 = input.int(120, title="Senkou Span B Lookback (p3)")
+
+// Denoising Filters Length
+int er_len = input.int(14, title="Efficiency Ratio Length")
+int std_len = input.int(30, title="IMO StdDev Length")
+int entropy_window = input.int(15, title="Entropy Window")
+int entropy_bins = input.int(6, title="Entropy Bins")
+
+// Strategy Thresholds
+float CHIKOU_THRESH = input.float(-0.30, title="Chikou Exit Threshold")
+float IMMUNITY_THRESH = input.float(0.50, title="IMO Immunity Threshold")
+float ENTROPY_THRESH = input.float(2.271, title="Entropy Entry Threshold")
+float IMO_MIN_LIMIT = input.float(-0.25, title="IMO Min Limit (Above Cloud)")
+float IMO_EXIT_BULL = input.float(-0.30, title="IMO Exit Bull (Above Cloud)")
+float ROC_GATE_LIMIT = input.float(-0.20, title="ROC Crash Gate Limit")
+
+// ==========================================
+// === HELPER FUNCTIONS ===
+// ==========================================
+// Ehler's SuperSmoother Filter (Spectral Denoising)
+f_supersmoother(float src, int len) =>
+    float a1 = math.exp(-1.414 * math.pi / len)
+    float b1 = 2.0 * a1 * math.cos(1.414 * math.pi / len)
+    float c2 = b1
+    float c3 = -a1 * a1
+    float c1 = 1.0 - c2 - c3
+    
+    var float filt = na
+    filt := na(filt[1]) ? src : c1 * (src + nz(src[1], src)) / 2.0 + c2 * nz(filt[1]) + c3 * nz(filt[2])
+    filt
+
+// Shannon Entropy (Rolling Returns Randomness Filter)
+f_shannon_entropy(float src, int window, int bins) =>
+    float ret = nz(ta.change(src) / src[1], 0.0)
+    float min_ret = ta.lowest(ret, window)
+    float max_ret = ta.highest(ret, window)
+    float bin_width = (max_ret - min_ret) / bins
+    
+    var int[] counts = array.new<int>(bins, 0)
+    array.fill(counts, 0)
+    
+    for i = 0 to window - 1
+        float val = ret[i]
+        if bin_width > 0.0
+            int bin_idx = math.min(bins - 1, math.floor((val - min_ret) / bin_width))
+            array.set(counts, bin_idx, array.get(counts, bin_idx) + 1)
+        else
+            array.set(counts, 0, window)
+            break
+            
+    float entropy = 0.0
+    for i = 0 to bins - 1
+        int count = array.get(counts, i)
+        if count > 0
+            float p = count / float(window)
+            entropy := entropy - p * math.log(p) / math.log(2.0)
+    entropy
+
+// ==========================================
+// === FEATURE CALCULATION ===
+// ==========================================
+// Volatility (ATR-equivalent smoothed true range)
+float atr = ta.sma(ta.tr(true), p2)
+
+// Ichimoku Lines
+float tenkan_sen = (ta.highest(high, p1) + ta.lowest(low, p1)) / 2.0
+float kijun_sen  = (ta.highest(high, p2) + ta.lowest(low, p2)) / 2.0
+
+float senkou_span_a_raw = (tenkan_sen + kijun_sen) / 2.0
+float senkou_span_b_raw = (ta.highest(high, p3) + ta.lowest(low, p3)) / 2.0
+
+// Shifted Cloud Spans (Current cloud value is what was calculated p2 bars ago)
+float senkou_span_a = senkou_span_a_raw[p2]
+float senkou_span_b = senkou_span_b_raw[p2]
+
+// Component 1: Tenkan-Kijun Cross (Normalized)
+float S_TK = math.tanh((tenkan_sen - kijun_sen) / atr)
+
+// Component 2: Close relative to Cloud (Normalized)
+float cloud_max = math.max(senkou_span_a, senkou_span_b)
+float cloud_min = math.min(senkou_span_a, senkou_span_b)
+float dist_cloud = 0.0
+if close > cloud_max
+    dist_cloud := (close - cloud_max) / atr
+else if close < cloud_min
+    dist_cloud := (close - cloud_min) / atr
+float S_Cloud = math.tanh(dist_cloud)
+
+// Component 3: Future Cloud Bias (Normalized)
+float S_Future = math.tanh((senkou_span_a_raw - senkou_span_b_raw) / atr)
+
+// Component 4: Chikou Span Momentum (Normalized & Smoothed)
+float raw_chikou_dist = (close - nz(close[p2], close)) / atr
+float S_Chikou = math.tanh(f_supersmoother(raw_chikou_dist, 4))
+
+// Composite Ichimoku Momentum Oscillator (IMO)
+float imo_raw = (S_TK + S_Cloud + S_Future + S_Chikou) / 4.0
+float IMO = f_supersmoother(imo_raw, 7)
+float IMO_Std = ta.stdev(IMO, std_len)
+
+// Efficiency Ratio (ER - Fractal filter)
+float price_change = math.abs(ta.change(close))
+float rolling_vol  = ta.sma(price_change, er_len) * er_len
+float net_change   = math.abs(close - nz(close[er_len], close))
+float ER = rolling_vol > 0.0 ? net_change / rolling_vol : 0.0
+
+// Shannon Entropy (Complexity filter)
+float Entropy = f_shannon_entropy(close, entropy_window, entropy_bins)
+
+// Crash Gate ROC (30 days price momentum)
+float roc_gate = (close - nz(close[30], close)) / nz(close[30], 1.0)
+
+// ==========================================
+// === STRATEGY SIGNAL GENERATION ===
+// ==========================================
+var float pos = 0.0
+var int confirm_count = 0
+var int hold_days = 0
+var float intent = na
+
+float threshold = IMO_Std * 0.40
+
+if pos > 0.0
+    hold_days := hold_days + 1
+else
+    hold_days := 0
+
+bool can_exit = hold_days >= 10
+
+if pos == 0.0
+    // ENTRY CONDITIONS
+    bool gate_pass = true
+    float entry_cloud_min = math.min(senkou_span_a, senkou_span_b)
+    if not na(entry_cloud_min)
+        gate_pass := (close >= entry_cloud_min)
+        
+    if IMO > threshold and ER > 0.25 and Entropy < ENTROPY_THRESH and gate_pass
+        if na(intent) or intent != 1.0
+            intent := 1.0
+            confirm_count := 1
+        else
+            confirm_count := confirm_count + 1
+            
+        if confirm_count >= 2 // CONFIRM_ENTRY = 2
+            pos := 1.0
+            confirm_count := 0
+            hold_days := 0
+            intent := na
+    else
+        intent := na
+        confirm_count := 0
+
+else // pos == 1.0
+    // EXIT CONDITIONS
+    bool exit_signal = false
+    if can_exit
+        float exit_cloud_max = math.max(senkou_span_a, senkou_span_b)
+        bool is_above_cloud = not na(exit_cloud_max) and (close >= exit_cloud_max)
+        bool is_not_crashing = (roc_gate >= ROC_GATE_LIMIT)
+        
+        // Dynamic exit immunity
+        bool is_immune = (IMO >= IMMUNITY_THRESH)
+        if is_above_cloud and is_not_crashing
+            is_immune := is_immune or (IMO >= IMO_MIN_LIMIT)
+            
+        // Dynamic macro exit threshold
+        float current_macro_exit_th = 0.0
+        if is_above_cloud and is_not_crashing
+            current_macro_exit_th := IMO_EXIT_BULL
+            
+        if S_Chikou < CHIKOU_THRESH and not is_immune
+            exit_signal := true
+        else if IMO < current_macro_exit_th
+            exit_signal := true
+            
+    if exit_signal
+        if na(intent) or intent != 0.0
+            intent := 0.0
+            confirm_count := 1
+        else
+            confirm_count := confirm_count + 1
+            
+        if confirm_count >= 1 // CONFIRM_EXIT = 1
+            pos := 0.0
+            confirm_count := 0
+            hold_days := 0
+            intent := na
+    else
+        intent := na
+        confirm_count := 0
+
+// ==========================================
+// === ORDER EXECUTION ===
+// ==========================================
+if pos == 1.0 and nz(pos[1], 0.0) == 0.0
+    strategy.entry("Long", strategy.long)
+
+if pos == 0.0 and nz(pos[1], 0.0) == 1.0
+    strategy.close("Long")
+
+// ==========================================
+// === CHART VISUALIZATION ===
+// ==========================================
+// Plot Ichimoku Cloud (Shifted forward by p2)
+color bull_color = color.new(color.green, 90)
+color bear_color = color.new(color.red, 90)
+
+p_sa = plot(senkou_span_a_raw, offset=p2, color=color.new(color.green, 50), title="Senkou Span A")
+p_sb = plot(senkou_span_b_raw, offset=p2, color=color.new(color.red, 50), title="Senkou Span B")
+fill(p_sa, p_sb, color = senkou_span_a_raw > senkou_span_b_raw ? bull_color : bear_color, title="Kumo Cloud")
+
+// Plot Kijun-sen for reference
+plot(kijun_sen, color=color.blue, linewidth=2, title="Kijun-sen")
+
+// Plot Entry/Exit Shapes
+plotshape(pos == 1.0 and nz(pos[1], 0.0) == 0.0, title="Buy Signal", style=shape.triangleup, location=location.belowbar, color=color.green, size=size.normal)
+plotshape(pos == 0.0 and nz(pos[1], 0.0) == 1.0, title="Sell Signal", style=shape.triangledown, location=location.abovebar, color=color.red, size=size.normal)
+
+// ==========================================
+// === TELEMETRY DASHBOARD ===
+// ==========================================
+var table info_table = table.new(position.top_right, 2, 6, bgcolor=color.new(color.black, 20), border_color=color.gray, border_width=1)
+if barstate.islast
+    table.set_cell_text(info_table, 0, 0, "Indicator", text_color=color.white, bgcolor=color.new(color.blue, 50))
+    table.set_cell_text(info_table, 1, 0, "Value", text_color=color.white, bgcolor=color.new(color.blue, 50))
+    
+    table.set_cell_text(info_table, 0, 1, "IMO (Smoothed)", text_color=color.white)
+    table.set_cell_text(info_table, 1, 1, str.tostring(IMO, "#.####"), text_color=IMO >= 0 ? color.green : color.red)
+    
+    table.set_cell_text(info_table, 0, 2, "S_Chikou (Denoised)", text_color=color.white)
+    table.set_cell_text(info_table, 1, 2, str.tostring(S_Chikou, "#.####"), text_color=S_Chikou >= CHIKOU_THRESH ? color.green : color.red)
+    
+    table.set_cell_text(info_table, 0, 3, "Efficiency Ratio (ER)", text_color=color.white)
+    table.set_cell_text(info_table, 1, 3, str.tostring(ER, "#.####"), text_color=color.yellow)
+    
+    table.set_cell_text(info_table, 0, 4, "Shannon Entropy", text_color=color.white)
+    table.set_cell_text(info_table, 1, 4, str.tostring(Entropy, "#.####"), text_color=Entropy < ENTROPY_THRESH ? color.green : color.orange)
+    
+    table.set_cell_text(info_table, 0, 5, "System Position", text_color=color.white)
+    table.set_cell_text(info_table, 1, 5, pos == 1.0 ? "LONG" : "FLAT", text_color=pos == 1.0 ? color.green : color.gray)

@@ -609,7 +609,7 @@ function App() {
 
   const fetchStatus = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/status');
+      const res = await fetch('/api/status');
       if (res.ok) {
         const data = await res.json();
         setBackendStatus(data);
@@ -624,7 +624,7 @@ function App() {
     setLoading(true);
     setErrorMsg('');
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/backtest', {
+      const res = await fetch('/api/backtest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(params)
@@ -639,7 +639,7 @@ function App() {
         setErrorMsg(err.detail || "Failed to execute backtest");
       }
     } catch (e) {
-      setErrorMsg("Connection to Python API refused. Ensure uvicorn server is running on http://127.0.0.1:8000");
+      setErrorMsg("Connection to Python API refused. Ensure uvicorn server is running.");
     } finally {
       setLoading(false);
     }
